@@ -1,0 +1,343 @@
+<!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+{% extends 'base.html' %} {% block head %}
+<style>
+  .info-box {
+    text-align: left;
+    margin: 0 auto;
+    max-width: 75vw;
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+  }
+  .info-box p,
+  .info-box ul,
+  .info-box li {
+    margin: 10px 0;
+  }
+  .info-box i {
+    display: block;
+    margin: 10px 0;
+    text-align: center;
+  }
+  .info-box ul {
+    padding-left: 20px;
+  }
+  .info-box ul li {
+    list-style-type: disc;
+  }
+  .info-box h3 {
+    margin-top: 20px;
+    color: #031e48;
+    text-decoration: underline;
+  }
+  .form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .form-container textarea {
+    width: 100%;
+    max-width: 800px;
+    height: 200px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #cccccc;
+    font-size: 16px;
+  }
+  .button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+  .form-container button {
+    margin: 0 10px;
+  }
+  .download-links,
+  .loading,
+  .log-content {
+    text-align: center;
+    justify-content: center;
+    padding-top: 15px;
+    display: none;
+  }
+  .hidden-content {
+    display: none;
+  }
+  .arrow {
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 10px solid gray;
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    cursor: pointer;
+  }
+  .arrow.up {
+    border-top: none;
+    border-bottom: 10px solid gray;
+  }
+  .log-content {
+    max-width: 75vw;
+    margin: 20px auto;
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+  }
+  .log-content div {
+    margin: 5px 0;
+    padding: 5px;
+  }
+</style>
+{% endblock %} {% block content %}
+<main>
+  <div class="info-box">
+    <h3>Batch Jobs</h3>
+    <p>
+      Batch Jobs will generate a PDF and CSV containing all generated reports
+      for the inputted searches. The format must be clearly followed as
+      specified. The user should enter one search per line, where each search is
+      of the format:
+    </p>
+    <p>
+      <i
+        >query, final_number, thermo_array, include_all_elements,
+        include_specific_elements, substructure_search,
+        number_substructure_search, weights (optional)</i
+      >
+    </p>
+    <div class="arrow" onclick="toggleContent()"></div>
+    <div id="hiddenContent" class="hidden-content">
+      <h3>Parameter Descriptions</h3>
+      <ul>
+        <li>
+          <strong>query:</strong> The query to be searched for. This can be a
+          PubChem CID, IUPAC Name, or SMILES.
+        </li>
+        <li>
+          <strong>final_number:</strong> The number of resultant candidates to
+          be outputted in the final report.
+        </li>
+        <li>
+          <strong>thermo_array:</strong> An array of 5 boolean values (True or
+          False) to decide if the user wants to include the following
+          thermophysical properties (in this order, no spaces between the
+          commas):
+          <ul>
+            <li>Melting Point</li>
+            <li>Boiling Point</li>
+            <li>Log P</li>
+            <li>Vapor Pressure</li>
+            <li>Henry's Law Constant</li>
+          </ul>
+        </li>
+        <li>
+          <strong>include_all_elements:</strong> CRS by default only searches
+          these elements: H, C, N, O, F, P, S, Cl, Se, Br, I. Setting this
+          parameter to True will include all elements instead. (Must be True or
+          False)
+        </li>
+        <li>
+          <strong>include_specific_elements:</strong> Add specific elements to
+          search in addition to the default ones. Should be in a comma-separated
+          format with no spaces in between. Must be either this or None.
+        </li>
+        <li>
+          <strong>substructure_search:</strong> Provide a SMARTS representation
+          of a substructure to require in all candidates. If not using, must
+          leave as None.
+        </li>
+        <li>
+          <strong>number_substructure_search:</strong> Signifies how many
+          occurrences of the substructure must appear in the candidate. If not a
+          number, leave as None. If a substructure is given and this is left as
+          None, the search will look for at least 1 or more occurrences.
+        </li>
+        <li>
+          <strong>weights (optional):</strong> An array of weights signifying
+          how to weigh each comparison value in the total rankings. This is
+          [1,1,1,1,1] by default. These correspond to:
+          <ul>
+            <li>Structural Similarity</li>
+            <li>Molecular Weight Similarity</li>
+            <li>Thermophysical Similarity</li>
+            <li>Evaluated Toxicity</li>
+            <li>Synthetic Accessibility Scoring</li>
+          </ul>
+        </li>
+      </ul>
+      <h3>Example Inputs</h3>
+      <p>
+        <i>6517, 30, [True,True,False,False,False], False, [Si], CCO, 1</i
+        ><br />
+        This example tells the CRS to search for recommendations for PubChem CID
+        6517. It would create a report with 30 candidates and use the
+        thermophysical properties of Melting Point and Boiling Point in
+        comparison. The elements allowed in candidates are the listed default
+        plus Silicon. Finally, all returned candidates will have at least one
+        occurrence of the SMARTS 'CCO'.
+      </p>
+      <p>
+        <i
+          >quinolin-8-ol, 30, [False,False,False,False,True], True, None, None,
+          None, [2,1,1,1,0]</i
+        ><br />
+        This example tells the CRS to search for recommendations for the IUPAC
+        Name quinolin-8-ol. It would create a report with 10 candidates and use
+        the thermophysical property of the Henry's Law Constant. Candidates will
+        be allowed to have any elements in it. The final sorting will disregard
+        SA Scoring in the calculation and give increased weightage to structural
+        similarity.
+      </p>
+    </div>
+  </div>
+  <div class="form-container">
+    <form action="/batch" method="POST">
+      <textarea
+        id="batchinput"
+        name="batchinput"
+        rows="8"
+        cols="100"
+      ></textarea>
+      <br />
+      <div class="button-container">
+        <button id="runButton" type="submit">Run</button>
+        <button
+          id="restartButton"
+          type="button"
+          style="display: none"
+          onclick="restartBatch()"
+        >
+          Restart
+        </button>
+      </div>
+    </form>
+  </div>
+  <div id="DownloadLinks1" class="download-links">
+    <a href="../static/LocalIO/Batch-Report.pdf"
+      >Download Batch Run PDF Report</a
+    >
+  </div>
+  <div id="DownloadLinks2" class="download-links">
+    <a href="../static/LocalIO/Combined-OPERA-Results.csv"
+      >Download Batch Run CSV Report</a
+    >
+  </div>
+  <div id="Loading" class="loading">
+    <a> Not Ready for Download, Please submit a job and wait.</a>
+  </div>
+  <div id="LogContent" class="log-content"></div>
+  <script>
+    function toggleContent() {
+      var content = document.getElementById("hiddenContent");
+      var arrow = document.querySelector(".arrow");
+      if (content.style.display === "none" || content.style.display === "") {
+        content.style.display = "block";
+        arrow.classList.add("up");
+      } else {
+        content.style.display = "none";
+        arrow.classList.remove("up");
+      }
+    }
+
+    function restartBatch() {
+      fetch("/batch_restart", { method: "POST" })
+        .then((response) => response.json())
+        .then((data) => {
+          const statusElement = document.getElementById("Loading");
+          const downloadLinks1 = document.getElementById("DownloadLinks1");
+          const downloadLinks2 = document.getElementById("DownloadLinks2");
+          const binput = document.getElementById("batchinput");
+          const runButton = document.getElementById("runButton");
+          const restartButton = document.getElementById("restartButton");
+          const logContent = document.getElementById("LogContent");
+
+          statusElement.textContent = "Please submit a job and wait.";
+          statusElement.style.display = "block";
+          downloadLinks1.style.display = "none";
+          downloadLinks2.style.display = "none";
+          binput.style.display = "block";
+          runButton.style.display = "block";
+          restartButton.style.display = "none";
+          logContent.style.display = "none"; // Hide log content
+          logContent.innerHTML = ""; // Clear log content
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+      function checkStatus() {
+        fetch("/batch_status")
+          .then((response) => response.json())
+          .then((data) => {
+            const statusElement = document.getElementById("Loading");
+            const downloadLinks1 = document.getElementById("DownloadLinks1");
+            const downloadLinks2 = document.getElementById("DownloadLinks2");
+            const binput = document.getElementById("batchinput");
+            const runButton = document.getElementById("runButton");
+            const restartButton = document.getElementById("restartButton");
+            const logContent = document.getElementById("LogContent");
+
+            console.log(data.ready);
+            if (data.ready === "loading") {
+              statusElement.style.display = "none";
+              downloadLinks1.style.display = "none";
+              downloadLinks2.style.display = "none";
+              binput.style.display = "none";
+              runButton.style.display = "none";
+              restartButton.style.display = "block";
+              logContent.style.display = "block"; // Show log content
+            } else if (data.ready === "true") {
+              statusElement.style.display = "none";
+              downloadLinks1.style.display = "block";
+              downloadLinks2.style.display = "block";
+              binput.style.display = "none";
+              runButton.style.display = "none";
+              restartButton.style.display = "block";
+              logContent.style.display = "none"; // Hide log content
+            } else {
+              statusElement.style.display = "block";
+              downloadLinks1.style.display = "none";
+              downloadLinks2.style.display = "none";
+              binput.style.display = "block";
+              runButton.style.display = "block";
+              restartButton.style.display = "none";
+              logContent.style.display = "none"; // Hide log content
+            }
+          });
+      }
+
+      function fetchLogContent() {
+        fetch("/fetch_log")
+          .then((response) => response.text())
+          .then((data) => {
+            const logContent = document.getElementById("LogContent");
+            logContent.innerHTML = ""; // Clear previous log content
+            const lines = data.split("\n");
+            lines.forEach((line) => {
+              const lineElement = document.createElement("div");
+              lineElement.textContent = line;
+              logContent.appendChild(lineElement);
+            });
+          });
+      }
+
+      function checkStatusAndFetchLog() {
+        checkStatus();
+        fetchLogContent();
+        setTimeout(checkStatusAndFetchLog, 2500); // Check again in 2.5 seconds
+      }
+
+      checkStatusAndFetchLog();
+    });
+  </script>
+</main>
+{% endblock %}

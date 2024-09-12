@@ -1,0 +1,401 @@
+<!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+{% extends 'base.html' %} {% block head %}
+<link rel="stylesheet" type="text/css" href="../static/index.css" />
+<style>
+  body {
+    font-family: "Poppins", sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 0;
+  }
+
+  .intro-section {
+    background: linear-gradient(to right, #043860, #043885);
+    color: white;
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0 5px 10px -5px;
+    position: relative;
+  }
+
+  .intro-section h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: beige;
+  }
+
+  .intro-section p {
+    font-size: 20px;
+    line-height: 1.8;
+  }
+
+  .column-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  .column {
+    flex: 1;
+    min-width: 250px; /* Adjust as needed */
+    margin: 10px;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: #ffffff; /* Reverted to white background */
+    color: #333; /* Reverted text color */
+    border-radius: 10px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0 5px 10px -5px;
+  }
+  .column h3 {
+    color: #031e48; /* Reverted heading color */
+    font-size: 22px; /* Increased font size */
+    padding-left: 10px; /* Added left padding */
+  }
+
+  .homeblock,
+  .homeblock2 {
+    background-color: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: rgba(53, 43, 189, 0.1) 0 10px 20px -10px;
+    margin-bottom: 20px;
+  }
+
+  .homeblock img,
+  .homeblock2 img {
+    max-width: 65%; /* Set a maximum width */
+    width: 100%; /* Ensure images fill the container */
+    height: auto; /* Maintain aspect ratio */
+    border-radius: 10px;
+    padding-top: 10px; /* Added padding at the top */
+    padding-bottom: 10px;
+    display: block;
+    margin: 0 auto; /* Center the image */
+  }
+
+  .smallblock {
+    display: flex;
+    flex-direction: column; /* Changed to column for vertical layout */
+    gap: 20px;
+    align-items: center;
+  }
+
+  .smallblock figure {
+    width: 100%; /* Ensure figures are responsive */
+    text-align: center;
+    margin: 0 auto; /* Center the figure */
+  }
+
+  .smallblock img {
+    border-radius: 10px;
+    padding-top: 10px; /* Added padding at the top */
+    display: block;
+    margin: 0 auto; /* Center the image */
+    max-width: 65%; /* Set a maximum width */
+    width: 100%; /* Ensure images fill the container */
+    height: auto; /* Maintain aspect ratio */
+  }
+
+  .smallblock div {
+    width: 100%; /* Ensure divs are responsive */
+    padding: 0 10px; /* Symmetrical padding */
+  }
+
+  .smallblock figcaption {
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    max-width: 100%; /* Ensure caption width matches image width */
+    margin: 0 auto; /* Center the caption */
+  }
+
+  .topbutton {
+    background-color: #043860;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+    border: 2px solid white; /* Added white border */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); /* Added border shadow */
+    position: fixed;
+    top: 160px; /* Adjusted position */
+    right: 35px; /* Adjusted position */
+    z-index: 10000; /* Ensure it stays on top */
+  }
+
+  .topbutton:hover {
+    background-color: #043885;
+  }
+
+  pre code {
+    display: block;
+    padding: 10px;
+    margin: 10px 0;
+    overflow: auto;
+    font-size: 85%;
+    line-height: 1.45;
+    background-color: #f6f8fa;
+    border-radius: 5px;
+  }
+
+  code {
+    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  }
+
+  ol {
+    font-size: 18px;
+    line-height: 1.6;
+    padding-left: 20px;
+  }
+
+  ol li {
+    margin-bottom: 10px;
+  }
+</style>
+
+{% endblock %} {% block outside %}
+<main>
+  <br /><br /><br /><br /><br /><br /><br />
+
+  <form action="/search">
+    <button type="submit" class="topbutton">Go to Search</button>
+  </form>
+
+  <div class="intro-section">
+    <h1>Welcome to the Chemical Recommender System</h1>
+    <p>
+      The Chemical Recommender System (CRS) is an advanced tool designed to
+      assist researchers in identifying and comparing chemical compounds based
+      on various criteria such as structural similarity, thermophysical
+      properties, and toxicity. Utilizing state-of-the-art machine learning
+      models and vector databases, CRS streamlines the process of chemical
+      discovery and evaluation, making it a valuable resource for scientific
+      research and development. Whether you are looking to find alternatives to
+      a known compound, predict the properties of a new molecule, or assess the
+      safety of a chemical, CRS provides a comprehensive solution.
+    </p>
+  </div>
+
+  <div class="column-container">
+    <div class="column">
+      <h3>Preprocessing: Fingerprint-CID Dataset</h3>
+      <div class="smallblock">
+        <div>
+          <p>
+            The first step in the CRS involves representing molecules as
+            fingerprints. A molecular fingerprint is a 2048-bit long vector
+            where each bit is set to on/off to represent the existence of a
+            certain structural property. This allows for a quick and
+            computationally efficient way of comparing molecules.
+          </p>
+          <div>
+            <figure>
+              <img
+                src="../static/assets/fingerprint.png"
+                alt="Fingerprint Image"
+              />
+              <figcaption>
+                The above figure describes how features from chemical compounds
+                can be taken and represented as specific bits within a
+                fingerprint representation.
+              </figcaption>
+            </figure>
+          </div>
+          <p>
+            To facilitate this, we created a comprehensive database of all
+            possible candidates and their respective fingerprints using
+            high-performance computing (HPC) for mass computation. This process
+            is implemented in the by converting PubChem CIDs and SMILES into
+            molecular fingerprints using RDKit. The input data for all candidats
+            is soruced from
+            <a href="https://ftp.ncbi.nlm.nih.gov/pubchem/Compound/Extras/"
+              >PubChem FTP</a
+            >. Fingerprints of all known candidates have already been calcuated
+            and integrated into the program, so users do not need to run this on
+            each query.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="column">
+      <h3>Running Fingerprint Similarity</h3>
+      <div class="smallblock">
+        <div>
+          <p>
+            When running a CRS search, we use done using a vector databasing
+            service, called Milvus. Vector Databases allow for the CRS to store
+            and manage these fingerprints efficiently. They use indexing methods
+            and effective preprocessing to allow for high-speed retrieval and
+            comparison of molecular fingerprints, significantly speeding up the
+            search process (~20x from conventional step through methods) without
+            loss of accuracy. By partitioning the database, we ensure that
+            searches are both fast and scalable, handling large datasets with
+            ease. This step ensures that only the most relevant candidates are
+            considered for further analysis, streamlining the process and
+            improving the accuracy of the results.
+          </p>
+          <p>
+            The result of the query is what follows: The process starts by
+            finding the query's molecular fingerprint. Then, the vector database
+            uses Tanimoto similarity to go through the entire existing database
+            from the previous step, finding the fingerprints that match the
+            best.
+          </p>
+          <div>
+            <figure>
+              <img
+                src="../static/assets/tani.png"
+                alt="Tanimoto Similarity Image"
+              />
+              <figcaption>
+                Formula for Tanimoto Similarity: Consisting of simple bit
+                operations, this is an extremely quick method to screen through
+                structural similarity of compounds.
+              </figcaption>
+            </figure>
+          </div>
+          <p>
+            As we iterate through searces in each partition, a heap with the
+            best candidates are maintained. Finally, a shortlist for similarity
+            is created as all the candidates with the highest Tanimoto
+            similarities move on for further screening.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="column-container">
+    <div class="column">
+      <h3>Thermophysical Comparison</h3>
+      <p style="padding-left: 10px; padding-right: 10px">
+        Results are computed by OPERA, and the search allows selection for
+        turning on comparison of the following properties: Melting Point,
+        Boiling Point, LogP, Vapor Pressure, and Henry's Law Constant.
+        Candidates have their value compared against the value of the query,
+        which is factored into the similarity score.
+      </p>
+    </div>
+    <div class="column">
+      <h3>Toxicity Evaluation</h3>
+      <p style="padding-left: 10px; padding-right: 10px">
+        This also occurs during the OPERA evaluation. OPERA computes the
+        following endpoints for toxicity: Log_BCF, CATMoS_EPA, CATMoS_LD50.
+        These values are evaluated and factored into the total similarity score
+        for each candidate. A higher value for toxicity decreases the aggregate
+        similarity score.
+      </p>
+    </div>
+    <div class="column">
+      <h3>Structural Similarity</h3>
+      <p style="padding-left: 10px; padding-right: 10px">
+        Another stage of structural similarity is performed. Here, we also have
+        OPERA compute several predicted structural properties of the
+        candidates/query. These include the Molecular Weight, Number of Rings,
+        Number of Lipinski Failures, Topological Surface Area, and Number of
+        Carbons.
+      </p>
+    </div>
+    <div class="column">
+      <h3>Synthetic Accessibility Scoring</h3>
+      <p style="padding-left: 10px; padding-right: 10px">
+        The SA score is computed using a function provided by RDKit. The SA
+        score predicts on a scale of 1-10 how difficult it would be to obtain
+        the candidate. This can be used as a method of including
+        cost-effectiveness in the similarity search. These values for each
+        candidate are factored into the similarity score.
+      </p>
+    </div>
+  </div>
+
+  <div class="column-container">
+    <div class="column">
+      <h3>Integrating Your Own Models</h3>
+      <div class="smallblock">
+        <div>
+          <p>
+            CRS allows users to integrate their own machine learning models to
+            enhance the chemical comparison process. This is currently only
+            available in the CRS CLI version. By specifying the container names
+            for your models, CRS will run these models during the comparison
+            process and factor their outputs into the similarity score. This
+            feature provides flexibility and customization, enabling users to
+            tailor the system to their specific needs.
+          </p>
+          <p>
+            To integrate your own models, create a Docker image for your model
+            with a Flask API to handle SMILES strings and return computed
+            results.
+          </p>
+        </div>
+        <div>
+          <figure>
+            <img
+              src="../static/assets/compose.png"
+              alt="Docker Compose Example"
+            />
+            <figcaption>
+              Example of an added service for the integration in a
+              docker-compose.yml file. Note that environment variables set must
+              be added in a .env file if used.
+            </figcaption>
+          </figure>
+        </div>
+        <div>
+          <p>
+            Update the `docker-compose.yml` file to include your Docker image as
+            a service. Note that the image and container names should be the
+            same, and will be the model name that you provide as a command line
+            option. Run the CRS application using Docker Compose, and your model
+            will be accessible as part of the CRS application.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="column">
+      <h3>Using CRS via CLI</h3>
+      <div class="smallblock">
+        <div>
+          <p>
+            The CRS can also be run via the command line interface (CLI). To run
+            CRS using CLI, use the `docker-compose.yml` file you used to run
+            this webapp. We will use roughly the same steps with some added on
+            instructions to access the container as a terminal. Navigate to this
+            directory and run the following command:
+          </p>
+          <pre><code>docker compose up -d</code></pre>
+          <p>
+            This will start the CRS application, which can be accessed at
+            localhost:5005 (or as otherwise specified in .env) in your browser.
+            To shut down the application, use the command:
+          </p>
+          <pre><code>docker compose down</code></pre>
+          <p>
+            Developers can integrate their own models by entering the container
+            shell and using the CLI. Use the following command to enter the
+            container shell:
+          </p>
+          <pre><code>docker exec -it CRS /bin/bash</code></pre>
+          <p>
+            Add your models through the command line and specify the name of
+            your Docker image in the CLI options of CRS to include your model in
+            the comparison process. Extensive instructions on how to do so can
+            be found in the repository README or with the following line:
+          </p>
+          <pre><code>python src/main.py -h</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

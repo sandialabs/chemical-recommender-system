@@ -1,0 +1,185 @@
+<!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+{% extends 'base.html' %} {% block head %}
+<link rel="stylesheet" type="text/css" href="../static/index.css" />
+{% endblock %} {% block content %}
+<main>
+  <div
+    class="topbox"
+    style="
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 30px;
+      align-items: center;
+    "
+  >
+    <div class="changeweightsbox">
+      <h2
+        style="
+          text-decoration: underline;
+          text-align: center;
+          padding-top: 10px;
+        "
+      >
+        Adjust Weightages (Optional)
+      </h2>
+      <form action="/results" method="POST">
+        <br />
+        <label for="weight1">Structural Similarity Weightage:&nbsp;</label>
+        <input
+          type="text"
+          name="weight1"
+          id="weight1"
+          value="{{weights[0]}}"
+          style="width: 45px; text-align: center"
+        />&nbsp;&nbsp;
+        <br />
+        <label for="weight2"
+          >Molecular Weight Similarity Weightage:&nbsp;</label
+        >
+        <input
+          type="text"
+          name="weight2"
+          id="weight2"
+          value="{{weights[1]}}"
+          style="width: 45px; text-align: center"
+        />&nbsp;&nbsp;
+        <br />
+        <label for="weight3">Thermophysical Similarity Weightage:&nbsp;</label>
+        <input
+          type="text"
+          name="weight3"
+          id="weight3"
+          value="{{weights[2]}}"
+          style="width: 45px; text-align: center"
+        />&nbsp;&nbsp;
+        <br />
+        <label for="weight4">Toxicity Evaluation Weightage:&nbsp;</label>
+        <input
+          type="text"
+          name="weight4"
+          id="weight4"
+          value="{{weights[3]}}"
+          style="width: 45px; text-align: center"
+        />&nbsp;&nbsp;
+        <br />
+        <label for="weight5">Synthetic Availability Weightage:&nbsp;</label>
+        <input
+          type="text"
+          name="weight5"
+          id="weight5"
+          value="{{weights[4]}}"
+          style="width: 45px; text-align: center"
+        />&nbsp;&nbsp;
+        <br />
+        <button type="submit" style="line-height: 10px; text-align: center">
+          Recalculate
+        </button>
+        <br />
+      </form>
+    </div>
+    <div class="graph">
+      <img
+        classname="graphim"
+        class="graphim"
+        src="../static/LocalIO/graph.png"
+      />
+    </div>
+  </div>
+  <br />
+  <hr />
+  <h2 style="text-decoration: underline; text-align: center">
+    Search Results (Top 20 or less)
+  </h2>
+  <div class="links" style="text-align: center; justify-content: center">
+    <a href="../static/LocalIO/OPERA-Predictions.csv"
+      >Download OPERA Predictions</a
+    >
+    &nbsp;&nbsp;&nbsp;
+    <a href="../static/LocalIO/report.pdf">Generate CRS Report</a>
+  </div>
+  <div id="tableContainer"></div>
+
+  <hr style="margin-top: 60px" />
+  <br />
+  <div class="big-container">
+    <div class="left-result" style="text-align: center; left: 0px">
+      <h2 style="text-decoration: underline">Query</h2>
+      <div class="fbox" style="display: flex; flex-wrap: wrap">
+        <div
+          class="card-container"
+          id="card-container"
+          style="padding-right: 0; margin-right: 0"
+        ></div>
+      </div>
+    </div>
+    <div class="right-result" style="text-align: center; left: 0px">
+      <h2 style="text-decoration: underline">
+        Candidates (Ranked, Top 20 or less)
+      </h2>
+      <div class="cards-container" id="cards-container"></div>
+    </div>
+  </div>
+  <form action="/search">
+    <button type="submit" class="topbutton">Back to Empty Search</button>
+  </form>
+
+  <!-- Embed JSON data in a script tag with type="application/json" -->
+  <script id="finalresults-data" type="application/json">
+    {{ finalresults | tojson | safe }}
+  </script>
+
+  <script type="text/javascript">
+    var container = document.getElementById("tableContainer");
+    function createTable(array) {
+      var table = "<table border='1'>";
+      table +=
+        "<thead><tr><th>PubChem CID</th><th>Final Similarity Score</th><th>Structural Similarity</th><th>Molecular Weight Similarity</th><th>Thermophysical Similarity</th><th>Predicted Toxicity</th><th>Synthetic Availability Score</th>";
+      if ("{{tarray[0]}}" == "True") {
+        table += "<th>Predicted Melting Points °C</th>";
+      }
+      if ("{{tarray[1]}}" == "True") {
+        table += "<th>Predicted Boiling Points °C</th>";
+      }
+      if ("{{tarray[2]}}" == "True") {
+        table += "<th>Predicted LogP values</th>";
+      }
+      if ("{{tarray[3]}}" == "True") {
+        table += "<th>Predicted Henry's Law Constants </th>";
+      }
+      if ("{{tarray[4]}}" == "True") {
+        table += "<th>Predicted Vapor Pressure Values</th>";
+      }
+      table += "<th>Predicted BCF</th>";
+      table += "<th>CATMoS EPA</th>";
+      table += "<th>LD50</th>";
+      table += "</tr></thead>";
+      for (var i = 0; i < array.length; i++) {
+        table += "<tr>";
+        for (var j = 0; j < array[i].length; j++) {
+          var elem = array[i][j];
+          if (j == 1 || j == 2 || j == 3 || j == 4 || j == 5 || j == 6) {
+            table += "<td>" + parseFloat(elem).toFixed(3) + "</td>";
+          } else {
+            table += "<td>" + elem + "</td>";
+          }
+        }
+        table += "</tr>";
+      }
+      table += "</table>";
+      return table;
+    }
+
+    // Parse the JSON data from the script tag
+    var finalres = JSON.parse(
+      document.getElementById("finalresults-data").textContent
+    );
+    console.log(finalres);
+    container.innerHTML = createTable(finalres);
+  </script>
+  <script src="../static/results.js"></script>
+</main>
+
+{% endblock %}

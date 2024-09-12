@@ -1,0 +1,16 @@
+# © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
+# SPDX-License-Identifier: BSD-3-Clause
+
+numpy==1.24.2
+pandas==1.5.3
+pubchempy==1.0.4
+rdkit==2022.9.5
+flask==2.3.2
+Flask-SocketIO==5.3.4
+matplotlib==3.7.1
+reportlab==4.0.9
+fpdf2==2.7.7
+pypdf==4.0.1
+docker==7.1.0
+pymilvus==2.4.4
+watchdog==4.0.2

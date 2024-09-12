@@ -1,0 +1,267 @@
+<!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
+<!-- SPDX-License-Identifier: BSD-3-Clause -->
+
+{% extends 'base.html' %} {% block head %}
+<link rel="stylesheet" type="text/css" href="../static/index.css" />
+<style>
+  .intro-section {
+    background: linear-gradient(to right, #043860, #043885);
+    color: white;
+    padding: 30px; /* Reduced padding to make it thinner */
+    border-radius: 10px;
+    text-align: center;
+    margin-bottom: 20px;
+    box-shadow: rgba(0, 0, 0, 0.1) 0 5px 10px -5px;
+    position: relative;
+  }
+
+  .intro-section h2 {
+    font-size: 32px; /* Reduced font size */
+    margin-bottom: 15px;
+    color: beige;
+  }
+
+  .intro-section p {
+    font-size: 18px; /* Reduced font size */
+    line-height: 1.6;
+  }
+
+  .button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+  }
+
+  .progress-container {
+    text-align: center;
+    margin-top: 20px;
+    display: none; /* Initially hidden */
+  }
+</style>
+{% endblock %} {% block content %}
+<main>
+  <div class="intro-section">
+    <h2>Search with the Chemical Recommender System</h2>
+    <p>
+      This program will run a small molecule similarity search. Your query will
+      be returned with other molecules similar thermophysically and in
+      structure. The return will also filter out molecules that are predicted to
+      be toxic. To begin, please input a name, PubChem CID, or canonical SMILES
+      for the molecule to be queried. Next, select how many final candidates to
+      see as a result, which can be downloaded in CSV format. By default, the
+      CRS searches for candidates with elements limited by the following: H, C,
+      N, O, F, P, S, Cl, Se, Br, I. This can be adjusted to include all elements
+      or additional specific elements below. You can also specify additional
+      search criteria such as including all elements, performing a SMARTS
+      substructure search, and selecting thermophysical properties to compare.
+      The search results will be displayed along with a progress log.
+    </p>
+  </div>
+
+  <div class="modal">
+    <form id="searchForm" action="/search" method="POST">
+      <h2 style="text-align: center">Search:</h2>
+      <div class="form__group field" style="padding-top: 10px">
+        <label for="query">Enter your query:&nbsp;</label>
+        <input
+          type="text"
+          name="query"
+          id="query"
+          placeholder="CID, SMILES, Name"
+          required
+        />
+        <label for="final"
+          >&nbsp;&nbsp;&nbsp;&nbsp;Final Candidate Count: &nbsp;</label
+        >
+        <select name="finals" id="final" style="width: 64px; height: 25px">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+          <option value="1000">1000</option>
+        </select>
+      </div>
+
+      <div class="form__group field" style="padding-top: 10px">
+        <input
+          style="bottom: 0px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="IncEle"
+          name="IncEle"
+        />
+        <label for="IncEle">Include all Elements&nbsp;&nbsp;</label>
+        <label for="IncEle2">&nbsp;&nbsp;Allow Specific Elements:&nbsp;</label>
+        <input
+          type="text"
+          name="IncEle2"
+          id="IncEle2"
+          placeholder="eg. - Ca, Ar, etc..."
+        />
+      </div>
+
+      <div class="form__group field" style="padding-top: 10px">
+        <label for="smarts">Smarts subsearch (optional):&nbsp;</label>
+        <input
+          type="text"
+          name="smarts"
+          id="smarts"
+          placeholder="eg. - c30c3, [NH2], etc..."
+        />
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <label for="smarts_num">Number of matches:&nbsp;</label>
+        <input
+          style="width: 90px"
+          type="text"
+          name="smarts_num"
+          id="smarts_num"
+          placeholder=">= 1 if empty"
+        />
+      </div>
+
+      <p style="line-height: 0; font-weight: bolder; padding-top: 10px">
+        Thermophysical Properties to Compare: &nbsp;
+      </p>
+      <div
+        class="thermselect"
+        style="
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          padding-top: 0px;
+        "
+      >
+        <input
+          style="bottom: 4px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="MP"
+          name="MP"
+          checked
+        />
+        <label for="MP">Melting Point&nbsp;&nbsp;</label><br />
+        <input
+          style="bottom: 4px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="BP"
+          name="BP"
+          checked
+        />
+        <label for="BP">Boiling Point&nbsp;&nbsp;</label><br />
+        <input
+          style="bottom: 4px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="logP"
+          name="logP"
+        />
+        <label for="logP">LogP&nbsp;&nbsp;</label><br />
+        <input
+          style="bottom: 4px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="VP"
+          name="VP"
+        />
+        <label for="VP">Vapor Pressure&nbsp;&nbsp;</label><br />
+        <input
+          style="bottom: 4px; position: relative; margin-right: 5px"
+          type="checkbox"
+          id="HLaw"
+          name="HLaw"
+        />
+        <label for="HLaw">Henry's Law Constant&nbsp;&nbsp;</label><br />
+      </div>
+      <div class="progress-container" id="progressContainer">
+        <p><span id="progressval"></span></p>
+      </div>
+      <div class="button-container">
+        <button
+          id="runButton"
+          type="submit"
+          style="line-height: 10px; text-align: center"
+        >
+          Search
+        </button>
+        <button
+          id="cancelButton"
+          type="button"
+          style="display: none; line-height: 10px; text-align: center"
+          onclick="cancelSearch()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+  <script type="text/javascript">
+    function fetchLog() {
+      fetch("/fetch_log")
+        .then((response) => response.text())
+        .then((data) => {
+          document.getElementById("progressval").innerText = data;
+        });
+    }
+
+    function cancelSearch() {
+      fetch("/search_cancel", { method: "POST" })
+        .then((response) => response.json())
+        .then((data) => {
+          const statusElement = document.getElementById("progressval");
+          const runButton = document.getElementById("runButton");
+          const cancelButton = document.getElementById("cancelButton");
+          const progressContainer =
+            document.getElementById("progressContainer");
+
+          statusElement.textContent = "Please submit a job and wait.";
+          runButton.style.display = "block";
+          cancelButton.style.display = "none";
+          progressContainer.style.display = "none";
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", (event) => {
+      function checkStatus() {
+        fetch("/search_status")
+          .then((response) => response.json())
+          .then((data) => {
+            const statusElement = document.getElementById("progressval");
+            const runButton = document.getElementById("runButton");
+            const cancelButton = document.getElementById("cancelButton");
+            const progressContainer =
+              document.getElementById("progressContainer");
+
+            if (data.ready === "loading") {
+              runButton.style.display = "none";
+              cancelButton.style.display = "block";
+              progressContainer.style.display = "block";
+              fetchLog();
+              setTimeout(checkStatus, 2500); // Check again in 2.5 seconds
+            } else if (data.ready === "true") {
+              window.location.href = "{{ url_for('results.resultsFunc') }}";
+            } else {
+              statusElement.textContent = "";
+              runButton.style.display = "block";
+              cancelButton.style.display = "none";
+              progressContainer.style.display = "none";
+            }
+          });
+      }
+
+      // Attach event listener to the form submission
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", function (event) {
+          event.preventDefault(); // Prevent default form submission
+          const formData = new FormData(this);
+          fetch(this.action, {
+            method: this.method,
+            body: formData,
+          }).then(() => {
+            checkStatus(); // Start polling for search status
+          });
+        });
+
+      checkStatus();
+    });
+  </script>
+</main>
+{% endblock %}

@@ -1,0 +1,78 @@
+# © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
+# SPDX-License-Identifier: BSD-3-Clause
+
+services:
+  etcd:
+    container_name: milvus-etcd
+    image: quay.io/coreos/etcd:v3.5.5
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    volumes:
+      - etc_d_vol:/etcd # Ensure the volume path matches the command's data-dir
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls=http://0.0.0.0:2379 --data-dir=/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  minio:
+    container_name: milvus-minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_vol:/minio_data # Adjusted to match the command's path
+    command: minio server /minio_data --console-address ":9001"
+
+  standalone:
+    container_name: milvus-standalone
+    image: milvusdb/milvus:v2.4.1
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: "etcd:2379"
+      MINIO_ADDRESS: "minio:9000"
+      CACHE_SIZE: "4.75GB" # Allocate most of the memory to cache
+      INSERT_BUFFER_SIZE: "0.25GB" # Minimal insert buffer size
+      PRELOAD_COLLECTION: "false" # Enable preloading if partitions fit into memory
+    volumes:
+      - milvus_vol:/var/lib/milvus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 30s
+      start_period: 90s
+      timeout: 20s
+      retries: 3
+    depends_on:
+      - etcd
+      - minio
+
+  crs-service:
+    container_name: CRS
+    image: ghcr.io/sandialabs/crs-image:v1.0
+    stdin_open: true
+    tty: true
+    volumes:
+      - milvus_vol:/milvus_data
+      - etc_d_vol:/etcd_data
+      - minio_vol:/minio_data
+    ports:
+      - "${CRS_PORT:-5005}:5005"
+    environment:
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+
+volumes:
+  milvus_vol:
+  etc_d_vol:
+  minio_vol:
+
+networks:
+  default:
+    name: milvus
