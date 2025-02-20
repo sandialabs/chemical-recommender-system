@@ -60,6 +60,7 @@ When finished using the CRS, copy resultant output files from the Docker contain
     - [RDKit SA Scoring](#rdkit-sa-scoring)
   - [Integrating Your Own Models](#integrating-your-own-models)
     - [Steps to Integrate Your Model](#steps-to-integrate-your-model)
+  - [Contributing](#contributing)
 
 ## Command Line / Developer Integrations
 
@@ -225,3 +226,6 @@ CRS allows users to integrate their own machine learning models to enhance the c
 5. **Run the Model**: Run the `docker compose up -d` command as usual and enter the interactive shell using `docker exec -it CRS /bin/bash`. Now, when running the CRS by calling `src/main.py`, add an extra argument, `-m` or `--model`, that is followed by the name(s) of models you would like to add. These models should be named the same as the image-name written in the step above.
 
 For further questions, please contact panair@sandia.gov
+
+## Contributing
+For guidelines on contributing to the CRS, refer to `CONTRIBUTING.md`.
