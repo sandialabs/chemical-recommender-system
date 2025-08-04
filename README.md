@@ -11,27 +11,8 @@
 
 # Chemical Recommender System (CRS)
 
-The Chemical Recommender System (CRS) is an advanced tool designed to assist researchers in identifying and comparing chemical compounds based on various criteria such as structural similarity, thermophysical properties, and toxicity. Utilizing state-of-the-art machine learning models and vector databases, CRS streamlines the process of chemical discovery and evaluation, making it an invaluable resource for scientific research and development. The CRS is elastic to user needs, transparent in its methods, and robust in allowing users to incorporate their own models and comparison metrics within CRS runs. Explore the documentation below to use the CRS.
+The Chemical Recommender System (CRS) is a tool designed to assist researchers in identifying and comparing chemical compounds based on various criteria such as structural similarity, thermophysical properties, and toxicity. Utilizing state-of-the-art machine learning models and vector databases, the CRS streamlines the process of chemical discovery and evaluation, making it an invaluable resource for scientific research and development. The CRS is elastic to user needs, transparent in its methods, and robust in allowing users to incorporate their own models and comparison metrics within CRS runs. Explore the documentation below to use the CRS.
 
-## Instructions to Run
-
-Warning: The current release of the CRS does not work on ARM64 machines, including M-series Macbooks. To run the Chemical Recommender System, first ensure that your machine has docker installed and configured (https://docs.docker.com/engine/install/). Then make sure the docker engine is running and download the docker-compose.yml file from this repo. Store it in a new directory, enter the directory. In here, create a .env file and create your settings as described below in the documentation. This is a necessary step to ensure all functionality. Finally, and then use the following command:
-
-`docker compose up -d`
-
-This will automatically open the web version of the application in your browser at `localhost:5005`. You will open up on the home page and the functionality of the CRS is found at the search and batch pages. When you are done using the CRS, you can shut down all containers and networks with the command `docker compose down`. If you are running into issues, make sure installation has occured correctly by deleting all volumes once the images are pulled and rerunning the compose up command.
-
-## Command Line Interface (CLI)
-
-The easiest way to use the CRS is described above through the webapp. However, using the CLI, developers can integrate their own machine learning models or comparison metrics they have created. To do this, enter the container shell and use the CLI. Continue from the previous steps and then:
-
-`docker exec -it CRS /bin/bash`
-
-The created terminal in a linux command line for the container and can generally be used as a normal linux machine. A variety of ways to use the CRS begin from here and can be further explore below at [Command Line / Developer Integrations](#command-line--developer-integrations). Each run will produce an report in the form of a and csv in the container.
-
-When finished using the CRS, copy resultant output files from the Docker container to your local machine, use the following command. You will want to copy over the output directory recursively:
-
-`docker cp CRS:/app/output /local/path/to/output`
 
 ## Table of Contents
 
@@ -62,16 +43,36 @@ When finished using the CRS, copy resultant output files from the Docker contain
     - [Steps to Integrate Your Model](#steps-to-integrate-your-model)
   - [Contributing](#contributing)
 
+## Instructions to Run
+
+To run the Chemical Recommender System, first ensure that your machine has docker installed and configured (https://docs.docker.com/engine/install/). To run the CRS on ARM64 machines, including M-series Macbooks, enable Docker  Emulation support using Rosetta. Next, ensure the docker engine is running and download the `docker-compose.yml` file from this reposotory. Enter the directory in which this file is stored. Here, create a .env file and create your settings as described below in the documentation. This is a necessary step to ensure all functionality. Finally, and then use the following command:
+
+`docker compose up -d`
+
+This will automatically open the web version of the application in your browser at `localhost:5005`. You will open up on the home page and the functionality of the CRS is found at the search and batch pages. When you are done using the CRS, you can shut down all containers and networks with the command `docker compose down`. If you are running into issues, make sure installation has occured correctly by deleting all volumes once the images are pulled and rerunning the compose up command.
+
+## Command Line Interface (CLI)
+
+The easiest way to use the CRS is described above through the intuitive webapp. However, using the CLI, developers can integrate their own machine learning models or comparison metrics they have created. To do this, enter the container shell and use the CLI. Continue from the previous steps and then:
+
+`docker exec -it CRS /bin/bash`
+
+The created terminal is a linux command line for the container and can generally be used as a normal linux machine. A variety of ways to use the CRS begin from here and can be further explore below at [Command Line / Developer Integrations](#command-line--developer-integrations). Each run will produce an report in the form of a and csv in the container.
+
+When finished using the CRS, copy resultant output files from the Docker container to your local machine, use the following command. You will want to copy over the output directory recursively:
+
+`docker cp CRS:/app/output /local/path/to/output`
+
 ## Command Line / Developer Integrations
 
-Now, run the CRS by using the command `python src/main.py (args)`. For a list of options, run `python src/main.py -h` to get help. Below is a basic overview of the options.
+Now, inside the docker terminal, run the CRS by using the command `python src/main.py (args)`. For a list of options, run `python src/main.py -h` to get help. Below is a basic overview of the options.
 
 ### Input File Format
 
 Input search parameters for the run must be written into a separate file. You can use text editors like nano or vim. The format of the input should be as follows:
 
 ```sh
-query, final_number, thermo_array, include_all_elements, include_specific_elements, substructure_search, number_substructure_search
+query, final_number, thermo_array, include_all_elements, include_specific_elements, disallow_isotopes,substructure_search, number_substructure_search, weights
 ```
 
 ## Environment Variables:
@@ -95,8 +96,9 @@ TARGETARCH=xxx64
   - Log P
   - Vapor Pressure
   - Henry's Law Constant
-- **include_all_elements**: CRS by default only searches these elements: H, C, N, O, F, P, S, Cl, Se, Br, I. Setting this to parameter to True will include all elements instead. (Must be True or False)
-- **include_specific_elements**: Add specific elements to search in addition to the default ones. Should be in a comma-separated format with no spaces in between. Must be either this or None.
+- **include_all_elements**: CRS by default only searches these elements: H, C, N, O, F, P, S, Cl, Se, Br, I. Setting this parameter to True will include all elements instead. (Must be True or False)
+- **include_specific_elements**: Add specific elements to search in addition to the default ones. Should be in a comma-separated format with no spaces in between. Must be either this or None. Only considered if False was provided for include_all_elements.
+- **disallow_isotopes**: 0 (allow isotopes) or 1 (disallow isotopes as candidates)
 - **substructure_search**: Provide a SMARTS representation of a substructure to require in all candidates. If not using, must leave as None.
 - **number_substructure_search**: Signifies how many occurrences of the substructure must appear in the candidate. If not a number, leave as None. If a substructure is given and this is left as None, the search will look for at least 1 or more occurrences.
 - **weights (optional)**: An array of weights signifying how to weigh each comparison value in the total rankings. This is [1,1,1,1,1] by default. These correspond to:
@@ -104,25 +106,21 @@ TARGETARCH=xxx64
   - Molecular Weight Similarity
   - Thermophysical Similarity
   - Evaluated Toxicity
-  - Synthetic Accesibility Scoring
+  - Synthetic Accessibility Scoring
 
 #### Example Inputs:
 
 ```sh
-6517, 30, [True,True,False,False,False], False, [Si], CCO, 1
+6517, 30, [True,True,False,False,False], False, [Si], 1, CCO, 1
 ```
 
-This example tells the CRS to search for recommendations for PubChem CID 6517. It would create a report with 30 candidates and use the
-thermophysical properties of Melting Point and Boiling Point in
-comparison. The elements allowed in candidates are the listed default
-plus Silicon. Finally, all returned candidates will have at least one
-occurrence of the SMARTS 'CCO'.
+This example tells the CRS to search for recommendations for PubChem CID 6517. It would create a report with 30 candidates and use the thermophysical properties of Melting Point and Boiling Point in comparison. The elements allowed in candidates are the listed default plus Silicon. Isotopes are disallowed. Finally, all returned candidates will have at least one occurrence of the SMARTS 'CCO'.
 
 ```sh
-quinolin-8-ol, 30, [False,False,False,False,True], True, None, None, None, [2,1,1,1,0]
+quinolin-8-ol, 30, [False,False,False,False,True], True, None, 0, None, None, [2,1,1,1,0]
 ```
 
-This example tells the CRS to search for recommendations for the IUPAC Name quinolin-8-ol. It would create a report with 10 candidates and use the thermophysical property of the Henry's Law Constant. Candidates will be allowed to have any elements in it. The final sorting will disregard SA Scoring in the calculation and give increased weightage to structural similarity.
+This example tells the CRS to search for recommendations for the IUPAC Name quinolin-8-ol. It would create a report with 10 candidates and use the thermophysical property of the Henry's Law Constant. Candidates will be allowed to have any elements in it. Isotopes are allowed. The final sorting will disregard SA Scoring in the calculation and give increased weightage to structural similarity.
 
 ### Running the CRS
 
@@ -144,7 +142,7 @@ In the case that the webapp of the CRS goes down, it can be restarted with the -
 
 ## Preprocessing
 
-The content of this section and its corresponding code is already ran by the developers and the data is stored inside the generated Docker volume. This code does not get run again during use of the CRS, but is here for the user's reference in how the CRS was created. The molecular fingerprint is implemented as a 2048-bit long vector. Each bit is set to on/off to represent the existence of a certain structural property. Comparison of these allows for a quick and computationally efficient way of comparing molecules. To do so, we must first create a database of all possible candidates and their respective fingerprints.
+The content of this section and its corresponding code is already ran by the developers and the data is stored inside the provided Docker image. This code does not get run again during use of the CRS, but is here for the user's reference in how the CRS was created. The molecular fingerprint is implemented as a 2048-bit long vector. Each bit is set to on/off to represent the existence of a certain structural property. Comparison of these allows for a quick and computationally efficient way of comparing molecules. To do so, we must first create a database of all possible candidates and their respective fingerprints.
 
 ### PubChem
 
@@ -156,9 +154,9 @@ This step is already performed and integrated into the program, so the user will
 
 On the user's end, the following steps include going onto the search page of the website and inputting the correct query. This search is done using a vector databasing service, Milvus, which is expanded upon in later sections.
 
-The result of the query is what follows. The following steps are all found in the `Comparison` folder. The process starts by running the program `Comparison.py`. The query's molecular fingerprint is evaluated, and the program uses Tanimoto similarity to go through the entire existing database from the previous step, finding the fingerprints that match the best. A shortlist for similarity is created as all the candidates with the highest Tanimoto similarities move on for further screening.
+The result of the query is what follows. The following steps are all found in the `Comparison` folder. The process starts by running the program `Comparison.py`. The query's molecular fingerprint is evaluated, and the program uses Jaccard similarity to go through the entire existing database from the previous step, finding the fingerprints that match the best. A shortlist for similarity is created as all the candidates with the highest Tanimoto similarities move on for further screening.
 
-We utilize a vector database solution, Milvus, to store and manage these fingerprints efficiently. Milvus allows for high-speed retrieval and comparison of molecular fingerprints, significantly speeding up the search process. By partitioning the database, we ensure that searches are both fast and scalable, handling large datasets with ease.
+We utilize a vector database solution, Milvus, to store and manage these fingerprints efficiently. Milvus allows for high-speed retrieval and comparison of molecular fingerprints, significantly speeding up the search process. By partitioning the database, we ensure that searches are both fast and scalable, handling large datasets with ease. The Milvus vector indices and vector data are prebuilt into the docker image that you have pulled.
 
 This step ensures that only the most relevant candidates are considered for further analysis, streamlining the process and improving the accuracy of the results.
 
@@ -176,7 +174,7 @@ This also occurs during the OPERA evaluation. OPERA computes the following endpo
 
 ### Structural Similarity
 
-Another stage of structural similarity is performed past the fingerprinting method. Here, we also have OPERA compute several predicted structural properties of the candidates/query. These are mainly the Molecular Weight, Number of Rings, and Number of Lipinski Failures. These have little effect on the overall similarity score but are considered in computation. Like the thermophysical properties, these values for the candidates are compared against that of the query and factored into the similarity score.
+Another stage of structural similarity is performed past the fingerprinting method. Here, we also have OPERA compute several predicted structural properties of the candidates/query. These are mainly the Molecular Weight, Number of Rings, Number of Carbons, and Number of Lipinski Failures. Like the thermophysical properties, these values for the candidates are compared against that of the query and factored into the similarity score.
 
 ### Synthetic Accessibility Scoring
 
@@ -228,4 +226,4 @@ CRS allows users to integrate their own machine learning models to enhance the c
 For further questions, please contact panair@sandia.gov
 
 ## Contributing
-For guidelines on contributing to the CRS, refer to `CONTRIBUTING.md`.
+For guidelines on contributing to the CRS, refer to `CONTRIBUTING.md`. Obviously, a change in the application requires not just editing source code, but also updating the image. To do so you must create a `DockerImport` folder in line with the `Dockerfile`, containing the three Milvus import folders and the OPERA installation package. The OPERA installation package can be downloaded from its Github, and the Milvus data can be downloaded from the volumes hooked up in the current image.

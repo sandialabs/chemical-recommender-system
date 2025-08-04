@@ -2,8 +2,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import os
+import sys
 import logging
-from App import create_app
+
+from . import create_app
+
+# Add this directory to path to allow importing from sibling modules
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from Comparison.utility import ensure_directories_exist
+
+# Call this early in the application startup
+ensure_directories_exist()
 
 # Configure Flask app logging
 logging.basicConfig(

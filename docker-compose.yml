@@ -30,34 +30,38 @@ services:
     command: minio server /minio_data --console-address ":9001"
 
   standalone:
-    container_name: milvus-standalone
-    image: milvusdb/milvus:v2.4.1
+    container_name: standalone  
+    image: milvusdb/milvus:v2.5.7
     command: ["milvus", "run", "standalone"]
+    restart: unless-stopped
     security_opt:
       - seccomp:unconfined
+    ports:
+      - "19530:19530" # Expose Milvus port for client connections
     environment:
       ETCD_ENDPOINTS: "etcd:2379"
       MINIO_ADDRESS: "minio:9000"
-      CACHE_SIZE: "4.75GB" # Allocate most of the memory to cache
-      INSERT_BUFFER_SIZE: "0.25GB" # Minimal insert buffer size
+      CACHE_SIZE: "4.9GB" # Allocate most of the memory to cache
+      INSERT_BUFFER_SIZE: "0.1GB" # Minimal insert buffer size
       PRELOAD_COLLECTION: "false" # Enable preloading if partitions fit into memory
     volumes:
       - milvus_vol:/var/lib/milvus
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 30s
+      interval: 15s
       start_period: 90s
       timeout: 20s
-      retries: 3
+      retries: 5
     depends_on:
       - etcd
       - minio
 
   crs-service:
     container_name: CRS
-    image: ghcr.io/sandialabs/crs-image:v1.0
+    image: ghcr.io/sandialabs/crs-image:v1.1
     stdin_open: true
     tty: true
+    platform: linux/amd64
     volumes:
       - milvus_vol:/milvus_data
       - etc_d_vol:/etcd_data
@@ -67,12 +71,11 @@ services:
     environment:
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - PARTITION_DIVISION=${PARTITION_DIVISION:-12}
+    depends_on:
+      - standalone
 
 volumes:
   milvus_vol:
   etc_d_vol:
   minio_vol:
-
-networks:
-  default:
-    name: milvus

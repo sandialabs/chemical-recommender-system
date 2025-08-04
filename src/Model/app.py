@@ -5,6 +5,7 @@
 
 from flask import Flask, request, jsonify
 from function import process_smiles
+import logging
 
 app = Flask(__name__)
 
@@ -15,7 +16,7 @@ def compute():
     smiles_list = data.get("smiles")
     result = {}
     for smile in smiles_list:
-        print(smile)
+        logging.info(smile)
         try:
             result[smile] = process_smiles(smile)
         except:

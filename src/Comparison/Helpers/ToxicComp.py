@@ -2,79 +2,81 @@
 # SPDX-License-Identifier: BSD-3-Clause
 
 import pandas as pd
-import logging
+from utils.progress_logger import get_progress_logger
 
-logger = logging.getLogger(__name__)
-
-# Add handlers to the logger to ensure logs go to both comparison.log and comparison-root.log
-comparison_handler = logging.FileHandler("logs/comparison.log", mode="a")
-comparison_handler.setLevel(logging.DEBUG)
-comparison_formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-comparison_handler.setFormatter(comparison_formatter)
-
-root_handler = logging.FileHandler("logs/comparison-root.log", mode="a")
-root_handler.setLevel(logging.INFO)
-root_formatter = logging.Formatter("%(message)s")
-root_handler.setFormatter(root_formatter)
-
-logger.addHandler(comparison_handler)
-logger.addHandler(root_handler)
+def get_column_safely(dataframe, row_index, column_name, default_value=0):
+    """
+    Safely get a value from a DataFrame column with fallback.
+    """
+    if column_name not in dataframe.columns:
+        return default_value
+    
+    try:
+        value = dataframe.loc[row_index, column_name]
+        if value != "N/A" and value is not None and str(value).strip() != "":
+            return float(value)
+        else:
+            return default_value
+    except (ValueError, TypeError, KeyError):
+        return default_value
 
 
-def toxicComparison(comp_dict):
+def toxicComparison(comp_dict, job_id="default"):
     """
     Performs toxicity property comparisons and updates the comparison dictionary.
-
-    This function reads toxicity data from a CSV file, performs calculations based on specific toxicity metrics,
-    and updates the comparison dictionary with the results.
-
-    Inputs:
-    - comp_dict: A dictionary where keys are chemical identifiers (CIDs) and values are lists containing
-      comparison metrics. The dictionary is updated in place.
-
-    Returns:
-    - comp_dict: The updated comparison dictionary with adjusted toxicity comparison values.
-
-    CSV File:
-    - The function reads data from "src/Comparison/LocalIO/Thermout.csv" which contains the following columns:
-        - "MoleculeID": The chemical identifier (CID)
-        - "LogBCF_pred": Predicted bioconcentration factor (BCF)
-        - "CATMoS_EPA_pred": Predicted EPA category
-        - "CATMoS_LD50_pred": Predicted LD50 value
-
-    Processing Steps:
-    1. Read the CSV file and extract the relevant toxicity data.
-    2. For each CID in the comparison dictionary, find the matching row in the CSV file.
-    3. Extract the BCF, EPA, and LD50 values for the CID.
-    4. Calculate the total toxicity value using the formula: totalval = BCF * EPA * LD50 / 2.
-    5. Update the comparison dictionary with the calculated toxicity value.
+    Uses static OPERA column names.
     """
+    logger = get_progress_logger(job_id)
     logger.info("Starting toxicity property comparisons.")
 
     try:
-        # Read the CSV file
         df = pd.read_csv("src/Comparison/LocalIO/Thermout.csv")
-
-        # Iterate over each CID in the comparison dictionary
+        logger.info(f"Loaded Thermout.csv with shape {df.shape}")
+        
+        # Use static OPERA column names
+        molecule_id_column = 'MoleculeID'
+        
+        logger.info(f"Available columns: {df.columns.tolist()}")
+        
+        if molecule_id_column not in df.columns:
+            logger.error(f"Required column {molecule_id_column} not found in DataFrame")
+            return comp_dict
+        
         for cid, vals in comp_dict.items():
-            cid = int(cid)
-            matching_row = df.index[df["MoleculeID"] == cid].tolist()[0]
-
-            # Extract toxicity values from the CSV file
-            BCF = float(df.loc[matching_row, "LogBCF_pred"])
-            EPA = 1 + float(df.loc[matching_row, "CATMoS_EPA_pred"])
-            LD50 = float(df.loc[matching_row, "CATMoS_LD50_pred"]) / 1000
-
-            # Calculate the total toxicity value
-            totalval = BCF * EPA * LD50 / 2
-
-            # Update the comparison dictionary with the calculated toxicity value
+            cid_int = int(cid)
+            
+            # Validate comp_dict structure before modification
+            if not isinstance(vals, (list, tuple)):
+                logger.warning(f"comp_dict[{cid}] is not a list/tuple: {type(vals)}")
+                continue
+            if len(vals) <= 4:
+                logger.warning(f"comp_dict[{cid}] has insufficient elements for toxicity score: {vals}")
+                continue
+            
+            # Find the matching row
+            matching_rows = df.index[df[molecule_id_column] == cid_int].tolist()
+            if not matching_rows:
+                logger.warning(f"No matching row found for CID {cid}")
+                continue
+                
+            matching_row = matching_rows[0]
+            
+            # Use static OPERA column names
+            BCF = get_column_safely(df, matching_row, 'LogBCF_pred', default_value=1.0)
+            EPA_raw = get_column_safely(df, matching_row, 'CATMoS_EPA_pred', default_value=0.0)
+            LD50 = get_column_safely(df, matching_row, 'CATMoS_LD50_pred', default_value=1000.0)
+            
+            EPA = 1 + EPA_raw
+            LD50_scaled = LD50 / 1000
+            totalval = BCF * EPA * LD50_scaled / 2
+            
             vals[4] = totalval
-
+            
+            logger.debug(f"CID {cid}: BCF={BCF}, EPA={EPA}, LD50={LD50_scaled}, totalval={totalval}")
+            
         logger.info("Toxicity property comparisons completed successfully.")
         return comp_dict
+        
     except Exception as e:
         logger.error(f"Error during toxicity property comparisons: {e}")
         raise

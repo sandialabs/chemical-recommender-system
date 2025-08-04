@@ -1,7 +1,6 @@
 # © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
 # SPDX-License-Identifier: BSD-3-Clause
 
-
 def normalizeValues(values):
     """
     Normalize a list of values to the range [0.45, 0.95], handling None values appropriately.
@@ -32,8 +31,7 @@ def normalizeValues(values):
         (
             None  # Keep None values as None
             if value is None
-            else (0.5 + (value - min_val) / (max_val - min_val) * 0.5)
-            - 0.05  # Normalize non-None values
+            else 0.45 + (value - min_val) / (max_val - min_val) * 0.5  # Range [0.45, 0.95]
         )
         for value in values
     ]

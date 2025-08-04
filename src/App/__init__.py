@@ -3,15 +3,15 @@
 
 from flask import Flask
 from .state import AppState
-import multiprocessing
+from flask_socketio import SocketIO
 
+socketio = SocketIO()
 
 def create_app():
     app = Flask(__name__)
 
-    # Initialize the state with a multiprocessing manager
-    manager = multiprocessing.Manager()
-    app.state = AppState(manager)
+    # Initialize the state without a multiprocessing manager
+    app.state = AppState()
 
     # Register blueprints
     from .routes.main import main_bp
@@ -27,5 +27,7 @@ def create_app():
     app.register_blueprint(contact_bp)
     app.register_blueprint(batch_bp)
     app.register_blueprint(api_bp)
+
+    socketio.init_app(app, cors_allowed_origins="*")
 
     return app

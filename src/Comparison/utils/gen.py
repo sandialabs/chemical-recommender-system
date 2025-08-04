@@ -5,29 +5,15 @@ import heapq
 import re
 import time
 import ast
-import logging
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import pubchempy as pcp
 
-# Ensure logging is configured in the main script
-logger = logging.getLogger(__name__)
+# Import the unified logging system
+from utils.progress_logger import get_progress_logger
 
-# Add handlers to the logger to ensure logs go to both comparison.log and comparison-root.log
-comparison_handler = logging.FileHandler("logs/comparison.log", mode="a")
-comparison_handler.setLevel(logging.DEBUG)
-comparison_formatter = logging.Formatter(
-    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-comparison_handler.setFormatter(comparison_formatter)
-
-root_handler = logging.FileHandler("logs/comparison-root.log", mode="a")
-root_handler.setLevel(logging.INFO)
-root_formatter = logging.Formatter("%(message)s")
-root_handler.setFormatter(root_formatter)
-
-logger.addHandler(comparison_handler)
-logger.addHandler(root_handler)
+# Default logger for utility functions
+logger = get_progress_logger("utils")
 
 
 def get_compound_properties(cid):
@@ -42,8 +28,8 @@ def get_compound_properties(cid):
     - queryname: The IUPAC name or a synonym of the compound.
     """
     logger.debug(f"Fetching properties for CID: {cid}")
-    properties = pcp.get_properties(["CanonicalSMILES", "IUPACName"], cid)[0]
-    smiles = properties.get("CanonicalSMILES", -1)
+    properties = pcp.get_properties(["SMILES", "IUPACName"], cid)[0]
+    smiles = properties.get("SMILES", -1)
     queryname = properties.get("IUPACName", None)
     if queryname is None:
         synonyms = pcp.get_synonyms(cid)[0].get("Synonym", [])
@@ -65,37 +51,40 @@ def parseQuery(queryinput):
     logger.debug(f"Parsing query input: {queryinput}")
     # Start with bad values for parity at the end
     query, querycid, queryname, smiles = -1, -1, -1, -1
+    fpgen = AllChem.GetMorganGenerator(
+        radius=2,
+        countSimulation=False,
+        includeChirality=False,
+        useBondTypes=True,
+        includeRingMembership=True,
+        fpSize=2048 
+    )
+                
 
     # Try searching by CID first, assume so if input is all numbers
     if isinstance(queryinput, int) or queryinput.isdigit():
         querycid = int(queryinput)
         smiles, queryname = get_compound_properties(querycid)
         if smiles != -1:
-            query = AllChem.GetMorganFingerprintAsBitVect(
-                Chem.MolFromSmiles(smiles), radius=2, nBits=2048, useFeatures=True
-            )
+            query = fpgen.GetFingerprint(Chem.MolFromSmiles(smiles))
     # Next, attempt to search as from name
     if query == -1:
         try:
             querycid = pcp.get_cids(queryinput, "name", list_return="flat")[0]
             smiles, queryname = get_compound_properties(querycid)
             if smiles != -1:
-                query = AllChem.GetMorganFingerprintAsBitVect(
-                    Chem.MolFromSmiles(smiles), radius=2, nBits=2048, useFeatures=True
-                )
+                query = fpgen.GetFingerprint(Chem.MolFromSmiles(smiles))
         except:
             pass
 
     # Next, attempt to search as from smiles
     if query == -1:
         try:
-            querycid = pcp.get_compounds(queryinput, "smiles")[0].cid
+            querycid = pcp.get_compounds(queryinput, "SMILES")[0].cid
             smiles, queryname = get_compound_properties(querycid)
             if smiles != -1:
-                query = AllChem.GetMorganFingerprintAsBitVect(
-                    Chem.MolFromSmiles(smiles), radius=2, nBits=2048, useFeatures=True
-                )
-        except:
+                query = fpgen.GetFingerprint(Chem.MolFromSmiles(smiles))
+        except:    
             pass
 
     logger.debug(
@@ -104,7 +93,7 @@ def parseQuery(queryinput):
     return [query, querycid, queryname, smiles]
 
 
-def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
+def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles, job_id="default", disallow_isotopes=False):
     """
     Filter the list of CIDs based on user parameters and return a list of passing SMILES strings.
 
@@ -115,10 +104,12 @@ def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
     - smarts_mol: The SMARTS pattern for substructure searching.
     - smarts_num: The number of substructure matches required.
     - querysmiles: The SMILES string of the query compound.
+    - job_id: Unique identifier for this job (for logging purposes).
 
     Returns:
     - c_arr: A list of SMILES strings for the filtered CIDs.
     """
+    logger = get_progress_logger(job_id)
     logger.debug("Filtering CIDs based on user parameters.")
     allowed = ["H", "C", "N", "O", "F", "P", "S", "Cl", "Se", "Br", "I"]
 
@@ -129,22 +120,60 @@ def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
     c_arr = []
     cids = []
     for item in found:
-        cids.append(item[1])
+        # Extract CID from (score, cid) tuple
+        cid = item[1]
+        cids.append(cid)
 
     properties = pcp.get_properties(
-        ["CanonicalSMILES", "IsomericSMILES", "IUPACName", "MolecularFormula"], cids
+        ["SMILES", "IUPACName", "MolecularFormula"], cids
     )
+
+    from rdkit import Chem
+    def is_isotope(smiles1, smiles2):
+        def get_mol_formula(mol):
+            formula = {}
+            for atom in mol.GetAtoms():
+                symbol = atom.GetSymbol()
+                formula[symbol] = formula.get(symbol, 0) + 1
+            return formula
+        mol1 = Chem.MolFromSmiles(smiles1)
+        mol2 = Chem.MolFromSmiles(smiles2)
+        if mol1 is None or mol2 is None:
+            return False
+        formula1 = get_mol_formula(mol1)
+        formula2 = get_mol_formula(mol2)
+        if formula1 != formula2:
+            return False
+        from collections import Counter
+        atoms1 = [(a.GetAtomicNum(), a.GetIsotope()) for a in mol1.GetAtoms()]
+        atoms2 = [(a.GetAtomicNum(), a.GetIsotope()) for a in mol2.GetAtoms()]
+        atomic_nums1 = [a[0] for a in atoms1]
+        atomic_nums2 = [a[0] for a in atoms2]
+        if Counter(atomic_nums1) != Counter(atomic_nums2):
+            return False
+        isotope_diff = False
+        for anum in set(atomic_nums1):
+            iso1 = [iso for (num, iso) in atoms1 if num == anum]
+            iso2 = [iso for (num, iso) in atoms2 if num == anum]
+            count1 = Counter(iso1)
+            count2 = Counter(iso2)
+            if count1 != count2:
+                if sum(count1.values()) == sum(count2.values()):
+                    isotope_diff = True
+                else:
+                    return False
+            elif set(iso1) == {0} and set(iso2) == {0}:
+                continue
+            elif count1 == count2:
+                continue
+        return isotope_diff
 
     for i in range(len(cids)):
         property = properties[i]
         cid = cids[i]
-        # Extract the properties
-        canonical_smiles = property.get("CanonicalSMILES", "")
-        isomeric_smiles = property.get("IsomericSMILES", "")
+        smiles = property.get("SMILES", "")
         iupac_name = property.get("IUPACName", "")
         elements = re.findall(r"[A-Z][a-z]*", property.get("MolecularFormula", ""))
-
-        # If the name is not defined by IUPAC, search for existing synonyms
         name = iupac_name
         if name is None:
             try:
@@ -155,13 +184,10 @@ def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
                     name = "CID: " + str(cid)
             except:
                 name = "CID: " + str(cid)
-
         name1 = queryname + ";"
         name2 = ";" + queryname
         name3 = queryname + ","
         name4 = "," + queryname
-
-        # Filter out results that contain the original query value as a part of the molecule
         if (
             name is None
             or queryname is None
@@ -174,13 +200,9 @@ def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
         ):
             c_arr.append(None)
             continue
-
-        # Filter out non-bonded molecules
-        if "." in str(canonical_smiles):
+        if "." in str(smiles):
             c_arr.append(None)
             continue
-
-        # Check if molecule only has allowed elements
         if incEle != True:
             found = False
             elements = elements
@@ -191,35 +213,39 @@ def filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles):
                     continue
             if found is True:
                 continue
-
-        # Perform substructure searching if specified by user
         if smarts_mol:
             if not smarts_num:
                 if not (
-                    Chem.MolFromSmiles(isomeric_smiles).GetSubstructMatches(smarts_mol)
+                    Chem.MolFromSmiles(smiles).GetSubstructMatches(smarts_mol)
                 ):
                     c_arr.append(None)
                     continue
             else:
-                matches = Chem.MolFromSmiles(isomeric_smiles).GetSubstructMatches(
+                matches = Chem.MolFromSmiles(smiles).GetSubstructMatches(
                     smarts_mol
                 )
                 if len(matches) != int(smarts_num):
                     c_arr.append(None)
                     continue
-
-        # If passing all the above tests, add the molecule SMILES to c_arr for return
-
-        if canonical_smiles == querysmiles:
+        if smiles == querysmiles:
             c_arr.append(None)
             continue
-        c_arr.append(canonical_smiles)
-    logger.debug(f"Filtered CIDs: {c_arr}")
+        # Isotope filtering (now here)
+        if disallow_isotopes and querysmiles:
+            try:
+                if is_isotope(querysmiles, smiles):
+                    logger.info(f"Filtered out isotopic candidate: {smiles}")
+                    c_arr.append(None)
+                    continue
+            except Exception as e:
+                logger.warning(f"Error checking isotope for candidate {smiles}: {e}")
+        c_arr.append(smiles)
+    logger.debug(f"CIDs processed: {cids}, CIDs filtered: {c_arr}")
     return c_arr
 
 
 def fillDict(
-    comp_dict, heap, finsize, queryname, incEle, smarts_mol, smarts_num, querysmiles
+    comp_dict, heap, finsize, queryname, incEle, smarts_mol, smarts_num, querysmiles, job_id="default", disallow_isotopes=False
 ):
     """
     Filter candidates to create a shortlist and fill the comparison dictionary.
@@ -233,69 +259,106 @@ def fillDict(
     - smarts_mol: The SMARTS pattern for substructure searching.
     - smarts_num: The number of substructure matches required.
     - querysmiles: The SMILES string of the query compound.
+    - job_id: Unique identifier for this job (for logging purposes).
 
     Returns:
     - smiles_dict: A dictionary mapping CIDs to SMILES strings for the filtered candidates.
     """
-    logger.info("============= Filtering candidates for shortlist ============")
+    logger = get_progress_logger(job_id)
+    logger.progress("Processing", "Filtering candidates for shortlist")
     filter_start = time.time()
-    firstpass = True
     smiles_dict = {}
-    while len(comp_dict) < finsize:
-        # Takes the heap and changes the highest values of finsize into dict format
-        # Checks it through the filter cid function and if it works, the cid is added to the dict
-        # Dict is of the form {key: [similarity, similarity, ...]}. 0th parameter is updated as through program as aggregate similarity while 1st is the constant similarity for future reference.
-        if firstpass:
-            found = heapq.nlargest(finsize, heap)
-            firstpass = False
-        else:
-            found = heapq.nlargest(int(finsize / 2), heap)
-        if len(found) == 0:
-            break
 
-        vals = filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles)
-        for i in range(len(found)):
-            item = found[i]
-            heap.remove(item)
+    logger.debug(heap)
+    while len(comp_dict) < finsize and len(heap) > 0:
+        # Determine how many candidates to take this round
+        if len(comp_dict) == 0:
+            # First pass: get more candidates than needed to detect ties properly
+            candidates_needed = finsize * 2
+        else:
+            # Subsequent passes: smaller batches
+            candidates_needed = int(finsize / 2)
+        
+        # Get candidates from heap, up to what's available
+        batch_size = min(candidates_needed, len(heap))
+        if batch_size == 0:
+            break
+            
+        # Get the top candidates from heap and remove them
+        found = []
+        for _ in range(batch_size):
+            if heap:
+                found.append(heapq.heappop(heap))
+        
+        if not found:
+            break
+            
+        # If this is the first pass, check for ties at the cutoff point
+        if len(comp_dict) == 0 and len(found) >= finsize:
+            cutoff_score = found[finsize - 1][0]  # Score of the finsize-th candidate
+            
+            # Check remaining heap for additional candidates with the same cutoff score
+            additional_tied = []
+            remaining_heap = []
+            
+            # Process remaining heap items
+            while heap:
+                item = heapq.heappop(heap)
+                if abs(item[0] - cutoff_score) < 1e-10:
+                    additional_tied.append(item)
+                else:
+                    remaining_heap.append(item)
+            
+            # Restore the non-tied items back to heap
+            for item in remaining_heap:
+                heapq.heappush(heap, item)
+            
+            if additional_tied:
+                logger.info(f"Found {len(additional_tied)} additional candidates tied at cutoff score {cutoff_score:.6f}")
+                found.extend(additional_tied)
+                logger.info(f"Extended selection to include all tied candidates (total: {len(found)})")
+
+        # Filter the candidates
+        vals = filterCIDs(found, queryname, incEle, smarts_mol, smarts_num, querysmiles, job_id, disallow_isotopes)
+        
+        # Add valid candidates to comp_dict
+        for i, item in enumerate(found):
             if vals[i] is not None:
-                if len(comp_dict) < finsize:
-                    smiles_dict[item[1]] = vals[i]
-                    comp_dict[item[1]] = [item[0], item[0], None, None, None, None]
+                cid = item[1]  # (score, cid) tuple
+                score = item[0]
+                smiles_dict[cid] = vals[i]
+                comp_dict[cid] = [score, score, None, None, None, None]
+                
+                # Log if we're including candidates beyond the target finsize due to ties
+                if len(comp_dict) > finsize:
+                    logger.debug(f"Including tied candidate CID {cid} with score {score:.6f} (total candidates: {len(comp_dict)})")
+    
     filter_end = time.time()
-    logger.info(
-        f"Total time taken for filtering: {filter_end - filter_start:.2f} seconds"
-    )
+    
+    # Log final statistics
+    if len(comp_dict) > finsize:
+        logger.info(f"Extended selection due to ties: {len(comp_dict)} total candidates (target was {finsize})")
+    else:
+        logger.info(f"Selected {len(comp_dict)} candidates (target was {finsize})")
+        
+    logger.info(f"Total time taken for filtering: {filter_end - filter_start:.2f} seconds")
 
     return smiles_dict
 
 
-def ensure_quoted_elements(element_list):
-    """
-    Ensure that all elements in the list are properly quoted strings.
-    """
-    if isinstance(element_list, str):
-        element_list = element_list.strip("[]").split(",")
-    return [
-        (
-            f'"{elem.strip()}"'
-            if not (elem.startswith('"') and elem.endswith('"'))
-            else elem.strip()
-        )
-        for elem in element_list
-    ]
-
-
-def parseBatchInput(batch_text, from_command=False, containers=[]):
+def parseBatchInput(batch_text, from_command=False, containers=[], job_id="default"):
     """
     Parse the batch input text and create elements for each query.
 
     Inputs:
     - batch_text: The input text containing multiple queries.
     - from_command: A flag indicating whether the input is from a command line text file.
+    - job_id: Unique identifier for this job (for logging purposes).
 
     Returns:
     - queries: A list of dictionaries containing parsed query parameters.
     """
+    logger = get_progress_logger(job_id)
     logger.debug("Parsing batch input text.")
     queries = []
 
@@ -306,7 +369,7 @@ def parseBatchInput(batch_text, from_command=False, containers=[]):
         lines = batch_text.split("\r\n")
 
     # Evaluate the lines, pull in data into each value as needed
-    # Input format: query, num candidates, [Melting Point, Boiling Point, logP, Henry's Law, Vapor Pressure], Include All Elements, Substructure Smarts, Substructure Hits, Weightages (optional)
+    # Input format: query, num candidates, [Melting Point, Boiling Point, logP, Henry's Law, Vapor Pressure], Include All Elements, Disallow Isotopes (0 or 1), Substructure Smarts, Substructure Hits, Weightages (optional)
     # Split by commas into array and parse each array element accordingly
     for line in lines:
         queryinput = line.split(", ")
@@ -325,30 +388,37 @@ def parseBatchInput(batch_text, from_command=False, containers=[]):
             incEle = queryinput[3]
             logger.debug(f"incEle (initial): {incEle}")
 
+            # Now parse include_specific_elements
             if incEle == "True":
                 incEle = True
             else:
                 if queryinput[4] != "None":
-                    incEle = ensure_quoted_elements(queryinput[4])
-                    incEle = ast.literal_eval(f"[{', '.join(incEle)}]")
+                    incEle = queryinput[4].replace('[', '["').replace(']', '"]').replace(',', '","')
+                    logger.debug(f"incEle (after replace): {incEle}")
+                    incEle = ast.literal_eval(incEle)
+                    logger.debug(f"incEle (after eval): {incEle}")
                 else:
                     incEle = [""]
             logger.debug(f"incEle (processed): {incEle}")
 
-            smarts = queryinput[5]
+            # Required: disallow_isotopes (0 or 1) as next parameter
+            disallow_isotopes = int(queryinput[5])
+            logger.debug(f"disallow_isotopes: {disallow_isotopes}")
+
+            smarts = queryinput[6]
             if smarts == "None":
                 smarts = None
             logger.debug(f"smarts: {smarts}")
 
-            smarts_num = int(queryinput[6]) if queryinput[6] != "None" else None
+            smarts_num = int(queryinput[7]) if queryinput[7] != "None" else None
             logger.debug(f"smarts_num: {smarts_num}")
 
             # Only look for extra weightage in the input if there exist extra parameters
             # The optional weightages should be inputted in the format [Structural Similarity, Molecular Weight, Thermophysical Similarity, Predicted Toxicity, SA Scoring]
-            if len(queryinput) < 8:
+            if len(queryinput) < 9:
                 weights = [1] * (5 + len(containers))
             else:
-                weights = ast.literal_eval(queryinput[7])
+                weights = ast.literal_eval(queryinput[8])
                 if len(weights) != (len(containers) + 5):
                     raise ValueError(
                         "Weightage array is not of correct length  - ensure added models are accounted for."
@@ -364,11 +434,28 @@ def parseBatchInput(batch_text, from_command=False, containers=[]):
                     "smarts": smarts,
                     "smarts_num": smarts_num,
                     "weights": weights,
+                    "disallow_isotopes": disallow_isotopes,
                 }
             )
-        except (ValueError, SyntaxError) as e:
+        except (ValueError, SyntaxError, IndexError) as e:
             logger.error(f"Error parsing line: {line}. Error: {e}")
             continue
 
     logger.debug(f"Parsed batch queries: {queries}")
     return queries
+
+
+def generate_metadata_from_dataframe(df):
+    """
+    Generate a metadata list from a pandas DataFrame for dynamic UI, CSV, and PDF rendering.
+    Each entry is a dict: {key, label, type}
+    """
+    metadata = []
+    for col in df.columns:
+        col_type = "number" if df[col].dtype.kind in 'ifc' else "string"
+        metadata.append({
+            "key": col,
+            "label": col.replace("_", " "),
+            "type": col_type
+        })
+    return metadata

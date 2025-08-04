@@ -1,13 +1,133 @@
 <!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 
-{% extends 'base.html' %} {% block head %}
-<style></style>
-{% endblock %} {% block content %}
-<main>
-  <p>
-    For questions or comments, contact panair@sandia.gov or mwitman@sandia.gov
-  </p>
-</main>
+{% extends 'base.html' %}
+{% block head %}
+<!-- Add Google Fonts and icons to match home page -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+{% endblock %}
+{% block outside %}
+<!-- Compact Contact Interface -->
+<div class="container" style="padding-top: 20px;">
+  <div class="search-container-compact">
+    <div class="search-header-compact">
+      <h1 style="color: white;">
+        <i class="fas fa-envelope"></i>
+        Contact Information
+      </h1>
+      <p style="color: rgba(255, 255, 255, 0.9);">Get in touch with the CRS development team</p>
+    </div>
+      
+    <div class="search-body-compact">
+      <!-- Contact Cards -->
+      <div class="search-section-compact">
+        <div class="section-header-compact">
+          <i class="fas fa-users"></i>
+          <h3>Development Team</h3>
+        </div>
+        
+        <div class="contact-grid">
+          <div class="contact-card-compact">
+            <div class="contact-icon">
+              <i class="fas fa-user-cog"></i>
+            </div>
+            <div class="contact-info">
+              <h4>Parthiv Nair</h4>
+              <p>Lead Developer</p>
+              <p style="font-size: 0.9em; color: #666; margin: 8px 0;"> 
+                Contact for all technical questions, feature requests, and system support.
+              </p>
+              <a href="mailto:panair@sandia.gov" class="contact-email">
+                <i class="fas fa-envelope"></i>
+                panair@sandia.gov
+              </a>
+            </div>
+          </div>
+          
+          <div class="contact-card-compact">
+            <div class="contact-icon">
+              <i class="fas fa-user-tie"></i>
+            </div>
+            <div class="contact-info">
+              <h4>Matthew Witman</h4>
+              <p>Backup Contact</p>
+              <p style="font-size: 0.9em; color: #666; margin: 8px 0;">
+                Alternative contact if the primary developer is unavailable.
+              </p>
+              <a href="mailto:mwitman@sandia.gov" class="contact-email">
+                <i class="fas fa-envelope"></i>
+                mwitman@sandia.gov
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
 
+      <!-- Resources Section -->
+      <div class="search-section-compact">
+        <div class="section-header-compact">
+          <i class="fas fa-link"></i>
+          <h3>Additional Resources</h3>
+        </div>
+        
+        <div class="resource-grid">
+          <div class="resource-card">
+            <div class="resource-icon">
+              <i class="fab fa-github"></i>
+            </div>
+            <div class="resource-info">
+              <h4>Source Code</h4>
+              <p>View the project repository, contribute, or report issues</p>
+              <a href="https://github.com/sandialabs/chemical-recommender-system" target="_blank" class="resource-link">
+                <i class="fas fa-external-link-alt"></i>
+                GitHub Repository
+              </a>
+            </div>
+          </div>
+          
+          <div class="resource-card">
+            <div class="resource-icon">
+              <i class="fas fa-bug"></i>
+            </div>
+            <div class="resource-info">
+              <h4>Report Issues</h4>
+              <p>Found a bug or have a feature request?</p>
+              <a href="https://github.com/sandialabs/chemical-recommender-system/issues" target="_blank" class="resource-link">
+                <i class="fas fa-exclamation-circle"></i>
+                Submit Issue
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Organization Info -->
+      <div class="search-section-compact">
+        <div class="section-header-compact">
+          <i class="fas fa-building"></i>
+          <h3>About Sandia National Laboratories</h3>
+        </div>
+        
+        <div class="org-info">
+          <div class="org-content">
+            <p>
+              The Chemical Recommender System is developed by Sandia National Laboratories.
+            </p>
+            <div class="org-details">
+              <div class="org-detail">
+                <i class="fas fa-copyright"></i>
+                <span>© 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS)</span>
+              </div>
+              <div class="org-detail">
+                <i class="fas fa-balance-scale"></i>
+                <span>Licensed under BSD-3-Clause</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

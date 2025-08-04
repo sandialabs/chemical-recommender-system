@@ -1,185 +1,280 @@
 <!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 
-{% extends 'base.html' %} {% block head %}
-<link rel="stylesheet" type="text/css" href="../static/index.css" />
-{% endblock %} {% block content %}
-<main>
-  <div
-    class="topbox"
-    style="
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 30px;
-      align-items: center;
-    "
-  >
+{% extends 'base.html' %}
+{% block head %}
+<!-- Cards styles are now included in style.css -->
+{% endblock %}
+{% block content %}
+
+<!-- Analysis Section -->
+<div class="analysis-section">
+  <h2 class="section-title">Similarity Analysis</h2>
+  <p class="section-description">
+    Review the similarity analysis results and adjust the weighting parameters to refine your search. 
+    The visualization shows how compounds relate to your query based on structural, thermophysical, and other molecular properties.
+  </p>
+  
+  <div class="topbox">
     <div class="changeweightsbox">
-      <h2
-        style="
-          text-decoration: underline;
-          text-align: center;
-          padding-top: 10px;
-        "
-      >
-        Adjust Weightages (Optional)
-      </h2>
-      <form action="/results" method="POST">
-        <br />
-        <label for="weight1">Structural Similarity Weightage:&nbsp;</label>
-        <input
-          type="text"
-          name="weight1"
-          id="weight1"
-          value="{{weights[0]}}"
-          style="width: 45px; text-align: center"
-        />&nbsp;&nbsp;
-        <br />
-        <label for="weight2"
-          >Molecular Weight Similarity Weightage:&nbsp;</label
-        >
-        <input
-          type="text"
-          name="weight2"
-          id="weight2"
-          value="{{weights[1]}}"
-          style="width: 45px; text-align: center"
-        />&nbsp;&nbsp;
-        <br />
-        <label for="weight3">Thermophysical Similarity Weightage:&nbsp;</label>
-        <input
-          type="text"
-          name="weight3"
-          id="weight3"
-          value="{{weights[2]}}"
-          style="width: 45px; text-align: center"
-        />&nbsp;&nbsp;
-        <br />
-        <label for="weight4">Toxicity Evaluation Weightage:&nbsp;</label>
-        <input
-          type="text"
-          name="weight4"
-          id="weight4"
-          value="{{weights[3]}}"
-          style="width: 45px; text-align: center"
-        />&nbsp;&nbsp;
-        <br />
-        <label for="weight5">Synthetic Availability Weightage:&nbsp;</label>
-        <input
-          type="text"
-          name="weight5"
-          id="weight5"
-          value="{{weights[4]}}"
-          style="width: 45px; text-align: center"
-        />&nbsp;&nbsp;
-        <br />
-        <button type="submit" style="line-height: 10px; text-align: center">
-          Recalculate
-        </button>
-        <br />
+      <h3 class="form-title">Adjust Weightages</h3>
+      <p class="weights-description">Fine-tune the importance of each similarity metric:</p>
+      <form action="/results" method="POST" autocomplete="off">
+        <div>
+          <label for="weight1">Structural Similarity:</label>
+          <input type="text" name="weight1" id="weight1" value="{{weights[0]}}" class="form-input weight-input" />
+        </div>
+        <div>
+          <label for="weight2">Molecular Weight:</label>
+          <input type="text" name="weight2" id="weight2" value="{{weights[1]}}" class="form-input weight-input" />
+        </div>
+        <div>
+          <label for="weight3">Thermophysical:</label>
+          <input type="text" name="weight3" id="weight3" value="{{weights[2]}}" class="form-input weight-input" />
+        </div>
+        <div>
+          <label for="weight4">Toxicity:</label>
+          <input type="text" name="weight4" id="weight4" value="{{weights[3]}}" class="form-input weight-input" />
+        </div>
+        <div>
+          <label for="weight5">Synthetic Availability:</label>
+          <input type="text" name="weight5" id="weight5" value="{{weights[4]}}" class="form-input weight-input" />
+        </div>
+        <button type="submit" class="form-button">Recalculate</button>
       </form>
     </div>
     <div class="graph">
-      <img
-        classname="graphim"
-        class="graphim"
-        src="../static/LocalIO/graph.png"
-      />
+      <img class="graphim" src="../static/LocalIO/graph.png" alt="Results Graph" onerror="this.onerror=null;this.src='../static/assets/no-graph.png';this.alt='Graph not available';" />
     </div>
   </div>
-  <br />
-  <hr />
-  <h2 style="text-decoration: underline; text-align: center">
-    Search Results (Top 20 or less)
-  </h2>
-  <div class="links" style="text-align: center; justify-content: center">
-    <a href="../static/LocalIO/OPERA-Predictions.csv"
-      >Download OPERA Predictions</a
-    >
-    &nbsp;&nbsp;&nbsp;
-    <a href="../static/LocalIO/report.pdf">Generate CRS Report</a>
-  </div>
-  <div id="tableContainer"></div>
+</div>
 
-  <hr style="margin-top: 60px" />
-  <br />
-  <div class="big-container">
-    <div class="left-result" style="text-align: center; left: 0px">
-      <h2 style="text-decoration: underline">Query</h2>
-      <div class="fbox" style="display: flex; flex-wrap: wrap">
-        <div
-          class="card-container"
-          id="card-container"
-          style="padding-right: 0; margin-right: 0"
-        ></div>
+{% if error_message %}
+  <div class="error-message" style="color: red; font-weight: bold; margin: 1em 0;">
+    {{ error_message }}
+  </div>
+{% endif %}
+
+{% if opera_failed %}
+  <div class="opera-warning" style="background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; border-radius: 4px; padding: 12px; margin: 1em 0;">
+    <strong>Property Calculation Warning:</strong> 
+    OPERA property predictions failed during analysis. Thermophysical and toxicity comparisons are using neutral values, 
+    which may reduce the accuracy of similarity rankings. Structural and fingerprint-based similarities are unaffected.
+    <br><small>Note: This typically occurs due to computational limitations or molecular complexity issues.</small>
+  </div>
+{% endif %}
+
+<h2 class="section-title">Search Results</h2>
+<div class="links">
+  <a href="../static/LocalIO/Property-Predictions.csv" class="download-link">Download Property Predictions</a>
+  <a href="../static/LocalIO/report.pdf" class="download-link">Generate CRS Report</a>
+</div>
+<div id="tableContainer">
+  {% if finalresults and finalresults|length > 0 %}
+    <!-- Render results table dynamically based on results_metadata -->
+    <table class="results-table">
+      <thead>
+        <tr>
+          {% for col in results_metadata %}
+            <th>{{ col.label }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in finalresults %}
+          <tr>
+            {% for col in results_metadata %}
+            <td>
+              {% set value = row[col.key] if col.key in row else '' %}
+              {% if col.key == "cid" and value != "" and value is not none %}
+                {# Format CID as integer if it's numeric #}
+                {% if value|string != 'Query' %}
+                  {% if '.' in value|string %}
+                    {{ value|float|int }}
+                  {% else %}
+                    {{ value }}
+                  {% endif %}
+                {% else %}
+                  {{ value }}
+                {% endif %}
+              {% elif col.type == "number" and value != "" and value != 0 and value is not none %}
+                {% if value|string != 'nan' %}
+                  {{ "%.3f"|format(value|float) }}
+                {% else %}
+                  -
+                {% endif %}
+              {% else %}
+                {{ value|safe if value is not none and value|string != 'nan' else '-' }}
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="info-message" style="padding: 1em; background-color: #f5faff; border: 1px solid #1976d2; border-radius: 5px; margin: 1em 0;">
+      <p>No results available. The search might not have found any matching compounds.</p>
+      <p>Try different search parameters or check the logs for errors.</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Cards section with proper layout -->
+<h2 class="section-title">Chemical Structures</h2>
+<div class="big-container">
+  <!-- Query card container (left side, 1/3 width) -->
+  <div id="card-container" class="card-container">
+    <h3>Query Compound</h3>
+  </div>
+
+  <!-- Results cards container (right side, 2/3 width) -->
+  <div id="cards-container" class="cards-container">
+    <h3 style="width: 100%; margin: 0 0 10px 0; color: #043885;">Similar Compounds</h3>
+  </div>
+</div>
+
+<!-- Modal for expanded card info -->
+  <div id="compound-modal" class="compound-modal" style="display:none;">
+    <div class="modal-content modern-modal larger-modal">
+      <span class="close-modal" id="close-modal">&times;</span>
+      <div id="modal-body" class="modal-body-flex larger-modal-body">
+        <!-- Populated by JS -->
       </div>
     </div>
-    <div class="right-result" style="text-align: center; left: 0px">
-      <h2 style="text-decoration: underline">
-        Candidates (Ranked, Top 20 or less)
-      </h2>
-      <div class="cards-container" id="cards-container"></div>
-    </div>
   </div>
-  <form action="/search">
-    <button type="submit" class="topbutton">Back to Empty Search</button>
-  </form>
 
-  <!-- Embed JSON data in a script tag with type="application/json" -->
-  <script id="finalresults-data" type="application/json">
-    {{ finalresults | tojson | safe }}
-  </script>
+<style>
+.compound-modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background: rgba(20, 30, 50, 0.45);
+  backdrop-filter: blur(2px);
+}
+/* Larger modal for better visibility */
+.modern-modal.larger-modal {
+  background: #fff;
+  margin: 2% auto;
+  padding: 0;
+  border-radius: 18px;
+  width: 99%;
+  max-width: 1100px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  position: relative;
+  overflow: hidden;
+  animation: modalFadeIn 0.25s;
+}
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.close-modal {
+  color: #888;
+  font-size: 36px;
+  font-weight: 700;
+  cursor: pointer;
+  position: absolute;
+  right: 24px;
+  top: 18px;
+  transition: color 0.2s;
+  z-index: 10;
+}
+.close-modal:hover { color: #043885; }
+  .modal-body-flex.larger-modal-body {
+    display: flex;
+    flex-direction: row;
+    gap: 48px;
+    padding: 56px 48px 44px 48px;
+    min-height: 420px;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-details-col {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-width: 475px;
+    justify-content: flex-start;
+    align-items: flex-end;
+  }
+  .modal-img-col {
+    flex: 0 0 320px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 24px;
+    min-width: 220px;
+    max-width: 340px;
+  }
+  .modal-img-col img {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    background: #f7fafd;
+  }
+  .modal-img-col .modal-photo-placeholder {
+    width: 100%;
+    height: 300px;
+    background: #e9eef7;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #b0b8c9;
+    font-size: 1.1em;
+    font-style: italic;
+    margin-top: 8px;
+  }
+  .modal-details-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    font-size: 1em;
+    box-shadow: none;
+    border: none;
+  }
+.modal-details-table th {
+  text-align: left;
+  color: #ffffff;
+  font-weight: 700;
+  padding-right: 18px;
+  font-size: 1.08em;
+}
+.modal-details-table td {
+  background: #f7fafd;
+  border-radius: 7px;
+  padding: 8px 14px;
+  color: #222;
+  width: 40px;
+  font-weight: 500;
+}
+@media (max-width: 900px) {
+  .modal-body-flex.larger-modal-body { flex-direction: column; gap: 18px; padding: 22px 10px 18px 10px; justify-content: center; align-items: center; }
+  .modal-img-col { align-items: flex-start; min-width: 0; max-width: 100%; }
+  .modal-img-col img { max-width: 100%; }
+  .modal-details-col { align-items: flex-end; }
+  .modal-details-table th, .modal-details-table td { font-size: 1em; }
+}
+</style>
 
-  <script type="text/javascript">
-    var container = document.getElementById("tableContainer");
-    function createTable(array) {
-      var table = "<table border='1'>";
-      table +=
-        "<thead><tr><th>PubChem CID</th><th>Final Similarity Score</th><th>Structural Similarity</th><th>Molecular Weight Similarity</th><th>Thermophysical Similarity</th><th>Predicted Toxicity</th><th>Synthetic Availability Score</th>";
-      if ("{{tarray[0]}}" == "True") {
-        table += "<th>Predicted Melting Points °C</th>";
-      }
-      if ("{{tarray[1]}}" == "True") {
-        table += "<th>Predicted Boiling Points °C</th>";
-      }
-      if ("{{tarray[2]}}" == "True") {
-        table += "<th>Predicted LogP values</th>";
-      }
-      if ("{{tarray[3]}}" == "True") {
-        table += "<th>Predicted Henry's Law Constants </th>";
-      }
-      if ("{{tarray[4]}}" == "True") {
-        table += "<th>Predicted Vapor Pressure Values</th>";
-      }
-      table += "<th>Predicted BCF</th>";
-      table += "<th>CATMoS EPA</th>";
-      table += "<th>LD50</th>";
-      table += "</tr></thead>";
-      for (var i = 0; i < array.length; i++) {
-        table += "<tr>";
-        for (var j = 0; j < array[i].length; j++) {
-          var elem = array[i][j];
-          if (j == 1 || j == 2 || j == 3 || j == 4 || j == 5 || j == 6) {
-            table += "<td>" + parseFloat(elem).toFixed(3) + "</td>";
-          } else {
-            table += "<td>" + elem + "</td>";
-          }
-        }
-        table += "</tr>";
-      }
-      table += "</table>";
-      return table;
-    }
+<!-- Embed data for JavaScript -->
+<script id="finalresults-data" type="application/json">{{ finalresults | tojson | safe }}</script>
+<script id="results-metadata" type="application/json">{{ results_metadata | tojson | safe }}</script>
+<script id="query-data" type="application/json">
+{
+  "queryval": {{ (state.queryval if state and state.queryval else '')|tojson|safe }},
+  "qcid": {{ (qcid if qcid else -1)|tojson|safe }}
+}
+</script>
 
-    // Parse the JSON data from the script tag
-    var finalres = JSON.parse(
-      document.getElementById("finalresults-data").textContent
-    );
-    console.log(finalres);
-    container.innerHTML = createTable(finalres);
-  </script>
-  <script src="../static/results.js"></script>
-</main>
-
+<script src="../static/results.js"></script>
 {% endblock %}

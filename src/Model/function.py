@@ -3,6 +3,7 @@
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
+import logging
 
 
 def process_smiles(smiles: str) -> float:
@@ -28,7 +29,7 @@ def process_smiles(smiles: str) -> float:
         return molecular_weight
 
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return float("nan")
 
 
@@ -36,4 +37,5 @@ def process_smiles(smiles: str) -> float:
 if __name__ == "__main__":
     smiles_example = "CCO"  # Ethanol
     result = process_smiles(smiles_example)
-    print(f"The estimated molecular weight for {smiles_example} is {result:.2f}")
+    if result is not None:
+        logging.info(f"The estimated molecular weight for {smiles_example} is {result:.2f}")

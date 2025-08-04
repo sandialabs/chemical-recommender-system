@@ -10,6 +10,7 @@ from rdkit import RDLogger
 import time
 import pandas as pd
 import os
+import logging
 
 # Exception Count is a global variable that counts how many CIDs faced error and were ignored
 exceptioncount = 0
@@ -19,10 +20,17 @@ exceptioncount = 0
 def comp_fp(smile):
     global exceptioncount
     molec = Chem.MolFromSmiles(smile)
+    fpgen = AllChem.GetMorganGenerator(
+        radius=2,
+        countSimulation=False,
+        includeChirality=False,
+        useBondTypes=True,
+    includeRingMembership=True,
+    fpSize=2048 
+    )
+    
     if molec is not None:
-        return AllChem.GetMorganFingerprintAsBitVect(
-            molec, radius=2, nBits=2048, useFeatures=True
-        ).ToBitString()
+        return fpgen.GetFingerprint(molec).ToBitString()
     else:
         exceptioncount += 1
         return None
@@ -45,6 +53,7 @@ if __name__ == "__main__":
 
     current_time = time.time()
 
+    #nrows below set to 100000, parameter should be removed when actually using, will take very long
     with open(path2, "w", newline="") as output_file:
         for chunk in pd.read_csv(
             path,
@@ -58,15 +67,7 @@ if __name__ == "__main__":
             chunk.to_csv(
                 output_file, mode="a", index=False, header=not output_file.tell()
             )
-            print("chunk done")
+            logging.info("chunk done")
 
-    # #nrows underneath set to 100000, parameter should be removed when actually using, will take very long
-    # df = pd.read_csv(path, nrows = 1000, delimiter = '\t', header = None, names = ['cid', 'smiles'])
-
-    # # change smiles column to be fingerprints and save to csv
-    # df["smiles"] =  df["smiles"].apply(comp_fp)
-    # df.rename(columns={'smiles': 'fps'}, inplace = True)
-    # df.to_csv(path2, index = False)
-
-    print("Exception Count: " + str(exceptioncount))
-    print("Elapsed time: " + str(time.time() - current_time))
+    logging.info("Exception Count: " + str(exceptioncount))
+    logging.info("Elapsed time: " + str(time.time() - current_time))

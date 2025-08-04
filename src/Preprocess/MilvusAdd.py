@@ -13,6 +13,7 @@ from pymilvus import (
 from tqdm.auto import tqdm
 import zipfile
 import os
+import logging
 
 
 def convert_bit_string_to_bytes(bit_string):
@@ -21,7 +22,7 @@ def convert_bit_string_to_bytes(bit_string):
         return int(bit_string, 2).to_bytes(num_bytes, byteorder="big")
     except ValueError:
         if bit_string != "nan":
-            print(f"Error converting bit_string: {bit_string}")
+            logging.error(f"Error converting bit_string: {bit_string}")
         return None
 
 
@@ -47,7 +48,7 @@ def read_csv_and_insert(zip_file_path, collection, partition_name, chunk_size=10
 
 def main():
     # Connect to Milvus
-    print("Connecting to Milvus...")
+    logging.info("Connecting to Milvus...")
     connections.connect(host="localhost", port="19530")
     collection_name = "cids_fps"  # USE HERE TO RENAME
 
@@ -55,7 +56,7 @@ def main():
     if utility.has_collection(collection_name):
         collection = Collection(name=collection_name)
         collection.drop()
-        print(f"Collection '{collection_name}' has been dropped.")
+        logging.info(f"Collection '{collection_name}' has been dropped.")
 
     # Define schema
     id_field = FieldSchema(name="cid", dtype=DataType.INT64, is_primary=True)
@@ -65,21 +66,21 @@ def main():
     )
 
     # Create collection in Milvus
-    print("Creating collection in Milvus...")
+    logging.info("Creating collection in Milvus...")
     collection = Collection(name=collection_name, schema=schema)
 
     # Directory containing cluster zips
     clusters_dir = "models/clusters/"
 
     # Process each cluster file
-    for i in range(120):  # Assuming cluster IDs range from 0 to 19
+    for i in range(120):  # Assuming cluster IDs range from 0 to 120
         cluster_zip_path = os.path.join(clusters_dir, f"cluster{i}.zip")
         partition_name = f"cluster_{i}"
         collection.create_partition(partition_name=partition_name)
         read_csv_and_insert(cluster_zip_path, collection, partition_name)
 
     # Creating index
-    print("Creating index...")
+    logging.info("Creating index...")
     collection.create_index(
         field_name="vector",
         index_params={
@@ -89,7 +90,7 @@ def main():
         },
     )
 
-    print("Process completed.")
+    logging.info("Process completed.")
 
 
 if __name__ == "__main__":

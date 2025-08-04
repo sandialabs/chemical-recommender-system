@@ -4,7 +4,6 @@
 import pandas as pd
 import pubchempy as pcp
 
-
 def compName(cid):
     """
     Get the compound name for a given CID, with a fallback to the CID if no name is found.
@@ -99,3 +98,25 @@ def createCSVOut(results, tarray, containers=[], query_models=[]):
 
     # Save CSV into LocalIO
     df.to_csv("src/App/static/LocalIO/results.csv", index=False)
+
+
+def create_opera_status_note(thermout_path="src/Comparison/LocalIO/Thermout.csv"):
+    """
+    Check if OPERA failed and create a note for inclusion in reports.
+
+    Returns:
+    - str: Status note about OPERA calculations
+    """
+    try:
+        import os
+
+        if not os.path.exists(thermout_path):
+            return "Warning: Property prediction file not found - calculations may be incomplete."
+
+        df = pd.read_csv(thermout_path)
+        if "OPERA_FAILED" in df.columns and df["OPERA_FAILED"].any():
+            return "Warning: OPERA property predictions failed. Thermophysical and toxicity data uses neutral values, reducing ranking accuracy."
+        else:
+            return "All property predictions completed successfully."
+    except Exception:
+        return "Warning: Unable to verify property prediction status."

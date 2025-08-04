@@ -1,343 +1,557 @@
 <!-- © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software. -->
 <!-- SPDX-License-Identifier: BSD-3-Clause -->
 
-{% extends 'base.html' %} {% block head %}
+{% extends 'base.html' %}
+{% block head %}
+<!-- Add Google Fonts and icons to match home page -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 <style>
-  .info-box {
-    text-align: left;
-    margin: 0 auto;
-    max-width: 75vw;
-    background-color: #ffffff;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    position: relative;
-  }
-  .info-box p,
-  .info-box ul,
-  .info-box li {
-    margin: 10px 0;
-  }
-  .info-box i {
-    display: block;
-    margin: 10px 0;
-    text-align: center;
-  }
-  .info-box ul {
-    padding-left: 20px;
-  }
-  .info-box ul li {
-    list-style-type: disc;
-  }
-  .info-box h3 {
-    margin-top: 20px;
-    color: #031e48;
-    text-decoration: underline;
-  }
-  .form-container {
+  .progress-box {
+    border: 2px solid #043885;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    box-shadow: 0 8px 30px rgba(4, 56, 133, 0.15);
+    min-height: 60px;
+    font-size: 1.1em;
+    color: #043885;
     display: flex;
-    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    border-left: 6px solid #043885;
+  }
+  .progress-icon {
+    font-size: 1.8em;
+    margin-right: 8px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    margin-top: 20px;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #043885 0%, #0ea5e9 100%);
+    color: white;
+    border-radius: 50%;
+    box-shadow: 0 4px 15px rgba(4, 56, 133, 0.3);
   }
-  .form-container textarea {
-    width: 100%;
-    max-width: 800px;
-    height: 200px;
-    padding: 10px;
-    border-radius: 5px;
-    border: 1px solid #cccccc;
-    font-size: 16px;
+  .batch-progress-section {
+    margin: 20px 0;
   }
-  .button-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 20px;
-  }
-  .form-container button {
-    margin: 0 10px;
-  }
-  .download-links,
-  .loading,
-  .log-content {
-    text-align: center;
-    justify-content: center;
-    padding-top: 15px;
-    display: none;
-  }
-  .hidden-content {
-    display: none;
-  }
-  .arrow {
-    width: 0;
+  .batch-progress-section[style*="display: none"] {
+    margin: 0;
     height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-top: 10px solid gray;
-    position: absolute;
-    bottom: 10px;
-    right: 10px;
-    cursor: pointer;
-  }
-  .arrow.up {
-    border-top: none;
-    border-bottom: 10px solid gray;
-  }
-  .log-content {
-    max-width: 75vw;
-    margin: 20px auto;
-    background-color: #f9f9f9;
-    padding: 20px;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-  }
-  .log-content div {
-    margin: 5px 0;
-    padding: 5px;
+    overflow: hidden;
   }
 </style>
-{% endblock %} {% block content %}
-<main>
-  <div class="info-box">
-    <h3>Batch Jobs</h3>
-    <p>
-      Batch Jobs will generate a PDF and CSV containing all generated reports
-      for the inputted searches. The format must be clearly followed as
-      specified. The user should enter one search per line, where each search is
-      of the format:
-    </p>
-    <p>
-      <i
-        >query, final_number, thermo_array, include_all_elements,
-        include_specific_elements, substructure_search,
-        number_substructure_search, weights (optional)</i
-      >
-    </p>
-    <div class="arrow" onclick="toggleContent()"></div>
-    <div id="hiddenContent" class="hidden-content">
-      <h3>Parameter Descriptions</h3>
-      <ul>
-        <li>
-          <strong>query:</strong> The query to be searched for. This can be a
-          PubChem CID, IUPAC Name, or SMILES.
-        </li>
-        <li>
-          <strong>final_number:</strong> The number of resultant candidates to
-          be outputted in the final report.
-        </li>
-        <li>
-          <strong>thermo_array:</strong> An array of 5 boolean values (True or
-          False) to decide if the user wants to include the following
-          thermophysical properties (in this order, no spaces between the
-          commas):
-          <ul>
-            <li>Melting Point</li>
-            <li>Boiling Point</li>
-            <li>Log P</li>
-            <li>Vapor Pressure</li>
-            <li>Henry's Law Constant</li>
-          </ul>
-        </li>
-        <li>
-          <strong>include_all_elements:</strong> CRS by default only searches
-          these elements: H, C, N, O, F, P, S, Cl, Se, Br, I. Setting this
-          parameter to True will include all elements instead. (Must be True or
-          False)
-        </li>
-        <li>
-          <strong>include_specific_elements:</strong> Add specific elements to
-          search in addition to the default ones. Should be in a comma-separated
-          format with no spaces in between. Must be either this or None.
-        </li>
-        <li>
-          <strong>substructure_search:</strong> Provide a SMARTS representation
-          of a substructure to require in all candidates. If not using, must
-          leave as None.
-        </li>
-        <li>
-          <strong>number_substructure_search:</strong> Signifies how many
-          occurrences of the substructure must appear in the candidate. If not a
-          number, leave as None. If a substructure is given and this is left as
-          None, the search will look for at least 1 or more occurrences.
-        </li>
-        <li>
-          <strong>weights (optional):</strong> An array of weights signifying
-          how to weigh each comparison value in the total rankings. This is
-          [1,1,1,1,1] by default. These correspond to:
-          <ul>
-            <li>Structural Similarity</li>
-            <li>Molecular Weight Similarity</li>
-            <li>Thermophysical Similarity</li>
-            <li>Evaluated Toxicity</li>
-            <li>Synthetic Accessibility Scoring</li>
-          </ul>
-        </li>
-      </ul>
-      <h3>Example Inputs</h3>
-      <p>
-        <i>6517, 30, [True,True,False,False,False], False, [Si], CCO, 1</i
-        ><br />
-        This example tells the CRS to search for recommendations for PubChem CID
-        6517. It would create a report with 30 candidates and use the
-        thermophysical properties of Melting Point and Boiling Point in
-        comparison. The elements allowed in candidates are the listed default
-        plus Silicon. Finally, all returned candidates will have at least one
-        occurrence of the SMARTS 'CCO'.
-      </p>
-      <p>
-        <i
-          >quinolin-8-ol, 30, [False,False,False,False,True], True, None, None,
-          None, [2,1,1,1,0]</i
-        ><br />
-        This example tells the CRS to search for recommendations for the IUPAC
-        Name quinolin-8-ol. It would create a report with 10 candidates and use
-        the thermophysical property of the Henry's Law Constant. Candidates will
-        be allowed to have any elements in it. The final sorting will disregard
-        SA Scoring in the calculation and give increased weightage to structural
-        similarity.
-      </p>
+{% endblock %}
+{% block outside %}
+<!-- Compact Batch Interface -->
+<div class="container" style="padding-top: 20px;">
+  <div class="search-container-compact">
+    <div class="search-header-compact">
+      <h1 style="color: white;">
+        <i class="fas fa-layer-group"></i>
+        Batch Processing
+      </h1>
+      <p style="color: rgba(255, 255, 255, 0.9);">Process multiple chemical searches efficiently with automated reporting</p>
+    </div>
+      
+    <div class="search-body-compact">
+      <!-- Instructions Section -->
+      <div class="search-section-compact">
+        <div class="section-header-compact">
+          <i class="fas fa-info-circle"></i>
+          <h3>Input Format</h3>
+        </div>
+        
+        <div class="batch-info">
+          <p>Enter one search per line using this format (all fields required except weights):</p>
+          <div class="format-example">
+            <code>query, final_number, thermo_array, include_all_elements, include_specific_elements, disallow_isotopes, substructure_search, number_substructure_search, weights</code>
+          </div>
+          
+          <div class="expandable-help">
+            <button type="button" class="help-toggle" onclick="toggleHelp()">
+              <i class="fas fa-chevron-down"></i>
+              Show Parameter Details
+            </button>
+            
+            <div id="helpContent" class="help-content" style="display: none;">
+              <div class="help-grid">
+                <div class="help-item">
+                  <strong>query:</strong> PubChem CID, IUPAC Name, or SMILES
+                </div>
+                <div class="help-item">
+                  <strong>final_number:</strong> Number of results (e.g., 30)
+                </div>
+                <div class="help-item">
+                  <strong>thermo_array:</strong> [MP, BP, LogP, VP, HL] as True/False
+                </div>
+                <div class="help-item">
+                  <strong>include_all_elements:</strong> True/False for all elements
+                </div>
+                <div class="help-item">
+                  <strong>include_specific_elements:</strong> Additional elements or None
+                </div>
+                <div class="help-item">
+                  <strong>disallow_isotopes:</strong> 0 (allow isotopes) or 1 (disallow isotopes as candidates)
+                </div>
+                <div class="help-item">
+                  <strong>substructure_search:</strong> SMARTS pattern or None
+                </div>
+                <div class="help-item">
+                  <strong>number_substructure_search:</strong> Min matches or None
+                </div>
+                <div class="help-item">
+                  <strong>weights:</strong> [1,1,1,1,1] for similarity weights (optional)
+                </div>
+              </div>
+              
+              <div class="example-section">
+                <h4><i class="fas fa-lightbulb"></i> Examples:</h4>
+                <div class="example-item">
+                  <code>6517, 30, [True,True,False,False,False], False, [Si], 1, CCO, 1</code>
+                  <small>Search CID 6517 with 30 results, MP+BP properties, include Silicon, disallow isotopes, require CCO pattern</small>
+                </div>
+                <div class="example-item">
+                  <code>quinolin-8-ol, 25, [False,False,False,False,True], True, None, 0, None, None, [2,1,1,1,0]</code>
+                  <small>Search quinolin-8-ol with Henry's Law, all elements, allow isotopes, weighted structural similarity</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Input Section -->
+      <div class="search-section-compact">
+        <div class="section-header-compact">
+          <i class="fas fa-edit"></i>
+          <h3>Batch Queries</h3>
+        </div>
+        
+        <form action="/batch" method="POST">
+          <div class="batch-input-group">
+            <textarea id="batchinput" name="batchinput" rows="8" 
+                     class="batch-textarea-compact" 
+                     placeholder="Enter one search query per line following the format above..."></textarea>
+          </div>
+          
+          <div class="search-actions-compact">
+            <button id="runButton" type="submit" class="btn-compact btn-primary">
+              <i class="fas fa-rocket"></i>
+              Start Batch Job
+            </button>
+            <button id="restartButton" type="button" style="display: none" 
+                   class="btn-compact btn-secondary" onclick="restartBatch()">
+              <i class="fas fa-redo"></i>
+              New Batch
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Progress Section -->
+      <div id="Loading" class="batch-progress-section" style="display: none;">
+        <div id="progressContainer" class="progress-box">
+          <div class="progress-icon">
+            <i class="fas fa-clock" id="progressIcon"></i>
+          </div>
+          <div id="progressContent">
+            <div id="progressStatus" style="font-weight: 600; font-size: 1.1em;">Initializing</div>
+            <div id="progressDetail" style="font-size: 0.95em; margin-top: 4px; opacity: 0.8;">
+              Preparing batch processing...
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Section -->
+      <div id="resultsSection" style="display: none;">
+        <div class="search-section-compact">
+          <div class="section-header-compact">
+            <i class="fas fa-download"></i>
+            <h3>Download Results</h3>
+          </div>
+          
+          <div class="download-grid">
+            <div id="DownloadLinks1" class="download-card" style="display: none;">
+              <div class="download-icon">
+                <i class="fas fa-file-pdf"></i>
+              </div>
+              <div class="download-info">
+                <h4>PDF Report</h4>
+                <p>Comprehensive batch analysis with visualizations</p>
+                <a id="pdfDownloadLink" href="#" class="download-btn">
+                  <i class="fas fa-download"></i>
+                  Download PDF
+                </a>
+              </div>
+            </div>
+            
+            <div id="DownloadLinks2" class="download-card" style="display: none;">
+              <div class="download-icon">
+                <i class="fas fa-file-csv"></i>
+              </div>
+              <div class="download-info">
+                <h4>CSV Data</h4>
+                <p>Raw data for further analysis and processing</p>
+                <a id="csvDownloadLink" href="#" class="download-btn">
+                  <i class="fas fa-download"></i>
+                  Download CSV
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="form-container">
-    <form action="/batch" method="POST">
-      <textarea
-        id="batchinput"
-        name="batchinput"
-        rows="8"
-        cols="100"
-      ></textarea>
-      <br />
-      <div class="button-container">
-        <button id="runButton" type="submit">Run</button>
-        <button
-          id="restartButton"
-          type="button"
-          style="display: none"
-          onclick="restartBatch()"
-        >
-          Restart
-        </button>
-      </div>
-    </form>
-  </div>
-  <div id="DownloadLinks1" class="download-links">
-    <a href="../static/LocalIO/Batch-Report.pdf"
-      >Download Batch Run PDF Report</a
-    >
-  </div>
-  <div id="DownloadLinks2" class="download-links">
-    <a href="../static/LocalIO/Combined-OPERA-Results.csv"
-      >Download Batch Run CSV Report</a
-    >
-  </div>
-  <div id="Loading" class="loading">
-    <a> Not Ready for Download, Please submit a job and wait.</a>
-  </div>
-  <div id="LogContent" class="log-content"></div>
-  <script>
-    function toggleContent() {
-      var content = document.getElementById("hiddenContent");
-      var arrow = document.querySelector(".arrow");
-      if (content.style.display === "none" || content.style.display === "") {
-        content.style.display = "block";
-        arrow.classList.add("up");
-      } else {
-        content.style.display = "none";
-        arrow.classList.remove("up");
-      }
+</div>
+<script>
+  let jobId = "{{ job_id|default('default') }}";
+  let eventSource = null;
+
+  function toggleHelp() {
+    const content = document.getElementById("helpContent");
+    const button = document.querySelector(".help-toggle");
+    const icon = button.querySelector("i");
+    
+    if (content.style.display === "none" || content.style.display === "") {
+      content.style.display = "block";
+      icon.className = "fas fa-chevron-up";
+      button.innerHTML = '<i class="fas fa-chevron-up"></i> Hide Parameter Details';
+    } else {
+      content.style.display = "none";
+      icon.className = "fas fa-chevron-down";
+      button.innerHTML = '<i class="fas fa-chevron-down"></i> Show Parameter Details';
     }
+  }
 
-    function restartBatch() {
-      fetch("/batch_restart", { method: "POST" })
-        .then((response) => response.json())
-        .then((data) => {
-          const statusElement = document.getElementById("Loading");
-          const downloadLinks1 = document.getElementById("DownloadLinks1");
-          const downloadLinks2 = document.getElementById("DownloadLinks2");
-          const binput = document.getElementById("batchinput");
-          const runButton = document.getElementById("runButton");
-          const restartButton = document.getElementById("restartButton");
-          const logContent = document.getElementById("LogContent");
-
-          statusElement.textContent = "Please submit a job and wait.";
-          statusElement.style.display = "block";
-          downloadLinks1.style.display = "none";
-          downloadLinks2.style.display = "none";
-          binput.style.display = "block";
-          runButton.style.display = "block";
-          restartButton.style.display = "none";
-          logContent.style.display = "none"; // Hide log content
-          logContent.innerHTML = ""; // Clear log content
-        });
+  function renderProgress(status, detail) {
+    const statusElement = document.getElementById("progressStatus");
+    const detailElement = document.getElementById("progressDetail");
+    const iconElement = document.getElementById("progressIcon");
+    const loadingSection = document.getElementById("Loading");
+    
+    // Show the progress section
+    if (loadingSection) loadingSection.style.display = "block";
+    
+    // Update status and detail
+    if (statusElement) statusElement.textContent = status;
+    if (detailElement) detailElement.textContent = detail;
+    
+    // Update icon based on status
+    if (iconElement) {
+      iconElement.className = "fas fa-clock"; // default
+      if (status === "Initializing") iconElement.className = "fas fa-clock";
+      else if (status === "Processing") iconElement.className = "fas fa-cog fa-spin";
+      else if (status === "Running") iconElement.className = "fas fa-play";
+      else if (status === "Completed") iconElement.className = "fas fa-check-circle"; // Individual query completed
+      else if (status === "Finished") iconElement.className = "fas fa-check"; // Batch finished
+      else if (status === "Error") iconElement.className = "fas fa-exclamation-triangle";
+      else if (status === "Connected") iconElement.className = "fas fa-link";
     }
+    
+    console.log("Progress update rendered:", status, detail);
+  }
 
-    document.addEventListener("DOMContentLoaded", (event) => {
-      function checkStatus() {
-        fetch("/batch_status")
-          .then((response) => response.json())
-          .then((data) => {
-            const statusElement = document.getElementById("Loading");
+  function startProgressStream() {
+    // Only start progress stream if we have a valid job ID
+    if (!jobId || jobId === "default" || jobId === "null") {
+      console.log("No valid job ID, skipping progress stream");
+      return;
+    }
+    
+    if (eventSource) {
+      eventSource.close();
+    }
+    console.log("Starting batch progress stream for job:", jobId);
+    
+    // Show initial progress state
+    renderProgress("Initializing", "Starting batch processing...");
+    
+    eventSource = new EventSource(`/progress_stream?job_id=${jobId}`);
+    
+    eventSource.onopen = function(event) {
+      console.log("SSE connection opened for batch job:", jobId);
+    };
+    
+    eventSource.onmessage = function(event) {
+      console.log("SSE message received:", event.data);
+      try {
+        const msg = JSON.parse(event.data);
+        console.log("Parsed SSE message:", msg);
+        renderProgress(msg.status, msg.detail);
+        
+        // Handle individual query completion (don't trigger UI transition)
+        if (msg.status === "Completed") {
+          console.log("Individual query completed:", msg.detail);
+        }
+        
+        // Handle final batch completion (trigger UI transition)
+        if (msg.status === "Finished") {
+          console.log("Batch processing finished! Triggering UI transition...");
+          // Small delay to show completion message, then directly transition UI
+          setTimeout(() => {
+            console.log("Transitioning UI to show results...");
+            console.log("Current jobId:", jobId);
+            
+            // Direct UI transition - no need to call problematic /batch_status
+            const loadingSection = document.getElementById("Loading");
+            const resultsSection = document.getElementById("resultsSection");
             const downloadLinks1 = document.getElementById("DownloadLinks1");
             const downloadLinks2 = document.getElementById("DownloadLinks2");
-            const binput = document.getElementById("batchinput");
+            const batchInput = document.getElementById("batchinput");
             const runButton = document.getElementById("runButton");
             const restartButton = document.getElementById("restartButton");
-            const logContent = document.getElementById("LogContent");
-
-            console.log(data.ready);
-            if (data.ready === "loading") {
-              statusElement.style.display = "none";
-              downloadLinks1.style.display = "none";
-              downloadLinks2.style.display = "none";
-              binput.style.display = "none";
-              runButton.style.display = "none";
-              restartButton.style.display = "block";
-              logContent.style.display = "block"; // Show log content
-            } else if (data.ready === "true") {
-              statusElement.style.display = "none";
-              downloadLinks1.style.display = "block";
-              downloadLinks2.style.display = "block";
-              binput.style.display = "none";
-              runButton.style.display = "none";
-              restartButton.style.display = "block";
-              logContent.style.display = "none"; // Hide log content
-            } else {
-              statusElement.style.display = "block";
-              downloadLinks1.style.display = "none";
-              downloadLinks2.style.display = "none";
-              binput.style.display = "block";
-              runButton.style.display = "block";
-              restartButton.style.display = "none";
-              logContent.style.display = "none"; // Hide log content
+            
+            // Hide progress, show results
+            loadingSection.style.display = "none";
+            resultsSection.style.display = "block";
+            downloadLinks1.style.display = "block";
+            downloadLinks2.style.display = "block";
+            batchInput.style.display = "none";
+            runButton.style.display = "none";
+            restartButton.style.display = "block";
+            
+            // Set download links
+            setDownloadLinks(jobId);
+            
+            // Close progress stream
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
             }
-          });
+            
+            console.log("UI transition completed successfully");
+          }, 1500);
+        }
+        
+        // Handle errors
+        if (msg.status === "Error") {
+          console.error("Batch processing error:", msg.detail);
+        }
+        
+      } catch (e) {
+        console.error("Error parsing SSE message:", e, "Raw data:", event.data);
+        // Fallback: display raw message
+        renderProgress("Processing", event.data);
       }
-
-      function fetchLogContent() {
-        fetch("/fetch_log")
-          .then((response) => response.text())
-          .then((data) => {
-            const logContent = document.getElementById("LogContent");
-            logContent.innerHTML = ""; // Clear previous log content
-            const lines = data.split("\n");
-            lines.forEach((line) => {
-              const lineElement = document.createElement("div");
-              lineElement.textContent = line;
-              logContent.appendChild(lineElement);
-            });
-          });
+    };
+    
+    eventSource.onerror = function(event) {
+      console.log("Progress stream error, closing connection", event);
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
       }
+      // Don't hide progress on error - user should see what happened
+    };
+  }
 
-      function checkStatusAndFetchLog() {
-        checkStatus();
-        fetchLogContent();
-        setTimeout(checkStatusAndFetchLog, 2500); // Check again in 2.5 seconds
-      }
+  function restartBatch() {
+    console.log("Restart batch clicked");
+    
+    fetch("/batch_restart", { method: "POST" })
+      .then((response) => {
+        console.log("Restart response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("Restart successful:", data);
+        
+        // Close any existing progress stream
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        
+        // Reset global jobId
+        jobId = "default";
+        
+        // Reset UI state - hide everything except the input form
+        document.getElementById("Loading").style.display = "none";
+        document.getElementById("DownloadLinks1").style.display = "none";
+        document.getElementById("DownloadLinks2").style.display = "none";
+        document.getElementById("resultsSection").style.display = "none";
+        document.getElementById("batchinput").style.display = "block";
+        document.getElementById("runButton").style.display = "block";
+        document.getElementById("restartButton").style.display = "none";
+        
+        // Clear the textarea
+        document.getElementById("batchinput").value = "";
+        
+        // Reset progress display
+        document.getElementById("progressStatus").textContent = "Initializing";
+        document.getElementById("progressDetail").textContent = "Preparing batch processing...";
+        document.getElementById("progressIcon").className = "fas fa-clock";
+      })
+      .catch((error) => {
+        console.error("Error restarting batch:", error);
+        
+        // Even if the server request fails, reset the UI
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        
+        jobId = "default";
+        
+        // Force UI reset regardless of server response
+        document.getElementById("Loading").style.display = "none";
+        document.getElementById("DownloadLinks1").style.display = "none";
+        document.getElementById("DownloadLinks2").style.display = "none";
+        document.getElementById("resultsSection").style.display = "none";
+        document.getElementById("batchinput").style.display = "block";
+        document.getElementById("runButton").style.display = "block";
+        document.getElementById("restartButton").style.display = "none";
+        document.getElementById("batchinput").value = "";
+        
+        // Reset progress display
+        document.getElementById("progressStatus").textContent = "Initializing";
+        document.getElementById("progressDetail").textContent = "Preparing batch processing...";
+        document.getElementById("progressIcon").className = "fas fa-clock";
+      });
+  }
 
-      checkStatusAndFetchLog();
-    });
-  </script>
-</main>
+  function setDownloadLinks(jobId) {
+    console.log("Setting download links for job ID:", jobId);
+    const pdfLink = `/static/jobs/${jobId}/batch.pdf`;
+    const csvLink = `/static/jobs/${jobId}/batch.csv`;
+    
+    const pdfElement = document.getElementById("pdfDownloadLink");
+    const csvElement = document.getElementById("csvDownloadLink");
+    
+    if (pdfElement) {
+      pdfElement.href = pdfLink;
+      console.log("PDF link set to:", pdfLink);
+    } else {
+      console.error("pdfDownloadLink element not found");
+    }
+    
+    if (csvElement) {
+      csvElement.href = csvLink;
+      console.log("CSV link set to:", csvLink);
+    } else {
+      console.error("csvDownloadLink element not found");
+    }
+  }
+
+  function checkStatus() {
+    console.log("=== checkStatus called ===");
+    console.log("Current global jobId:", jobId);
+    
+    console.log("Starting fetch to /batch_status...");
+    fetch("/batch_status")
+      .then((response) => {
+        console.log("=== Fetch response received ===");
+        console.log("batch_status response status:", response.status);
+        console.log("batch_status response ok:", response.ok);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log("=== Batch status response data ===");
+        console.log("Full response:", JSON.stringify(data, null, 2));
+        console.log("data.ready:", data.ready);
+        console.log("data.job_id:", data.job_id);
+        
+        const loadingSection = document.getElementById("Loading");
+        const resultsSection = document.getElementById("resultsSection");
+        const downloadLinks1 = document.getElementById("DownloadLinks1");
+        const downloadLinks2 = document.getElementById("DownloadLinks2");
+        const batchInput = document.getElementById("batchinput");
+        const runButton = document.getElementById("runButton");
+        const restartButton = document.getElementById("restartButton");
+        
+        if (data.ready === "loading") {
+          console.log("=== Status: loading ===");
+          // Show progress, hide everything else
+          loadingSection.style.display = "block";
+          resultsSection.style.display = "none";
+          downloadLinks1.style.display = "none";
+          downloadLinks2.style.display = "none";
+          batchInput.style.display = "none";
+          runButton.style.display = "none";
+          restartButton.style.display = "block";
+          // Only start progress stream when actually loading
+          if (data.job_id && data.job_id !== "default") {
+            jobId = data.job_id;
+            startProgressStream();
+          }
+        } else if (data.ready === "true") {
+          console.log("=== Status: true (completed) ===");
+          
+          // Use job_id from data if available, otherwise use current jobId
+          const currentJobId = data.job_id || jobId;
+          console.log("Using job ID for results:", currentJobId);
+          
+          if (currentJobId && currentJobId !== "default") {
+            console.log("=== Setting up results display ===");
+            // Hide progress, show results
+            loadingSection.style.display = "none";
+            resultsSection.style.display = "block";
+            downloadLinks1.style.display = "block";
+            downloadLinks2.style.display = "block";
+            
+            console.log("Calling setDownloadLinks with jobId:", currentJobId);
+            setDownloadLinks(currentJobId);
+            
+            batchInput.style.display = "none";
+            runButton.style.display = "none";
+            restartButton.style.display = "block";
+            
+            // Close progress stream when complete
+            if (eventSource) {
+              eventSource.close();
+              eventSource = null;
+            }
+          } else {
+            console.warn("=== No valid job ID available for results ===");
+            console.warn("data.job_id:", data.job_id);
+            console.warn("global jobId:", jobId);
+          }
+        } else {
+          console.log("=== Status: idle ===");
+          loadingSection.style.display = "none";
+          resultsSection.style.display = "none";
+          batchInput.style.display = "block";
+          runButton.style.display = "block";
+          restartButton.style.display = "none";
+          // Close progress stream when idle
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+        }
+        console.log("=== checkStatus completed ===");
+      })
+      .catch((error) => {
+        console.error("=== Error checking batch status ===");
+        console.error("Error type:", error.constructor.name);
+        console.error("Error message:", error.message);
+        console.error("Full error:", error);
+        
+        // On error, show the input form
+        document.getElementById("Loading").style.display = "none";
+        document.getElementById("resultsSection").style.display = "none";
+        document.getElementById("batchinput").style.display = "block";
+        document.getElementById("runButton").style.display = "block";
+        document.getElementById("restartButton").style.display = "none";
+      });
+  }
+
+  document.addEventListener("DOMContentLoaded", (event) => {
+    // Only check status on load, don't automatically start progress stream
+    checkStatus();
+  });
+</script>
 {% endblock %}

@@ -1,12 +1,15 @@
 # © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
 # SPDX-License-Identifier: BSD-3-Clause
+
 import csv
+import os
 import pubchempy as pcp
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
 from io import BytesIO
 from fpdf import FPDF
 from pypdf import PdfWriter
+import logging
 
 
 def fetchPubchemInfo(cids):
@@ -21,7 +24,7 @@ def fetchPubchemInfo(cids):
     """
     cidarr = [int(cid) for cid in cids if cid != "-1"]
     try:
-        properties = pcp.get_properties(["CanonicalSMILES", "IUPACName"], cidarr)
+        properties = pcp.get_properties(["SMILES", "IUPACName"], cidarr)
 
         for prop in properties:
             if not prop.get("IUPACName"):
@@ -33,7 +36,7 @@ def fetchPubchemInfo(cids):
 
         return properties
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return None
 
 
@@ -186,9 +189,10 @@ def convert(
     align="C",
     size=8,
     headersize=9,
+    metadata_path=None,
 ) -> None:
     """
-    Convert a CSV file to a PDF table.
+    Convert a CSV file to a PDF table, using metadata for column order and labels if provided.
 
     Inputs:
     - source: The source CSV file path.
@@ -198,13 +202,21 @@ def convert(
     - align: The alignment for the table cells (default is "C" for center).
     - size: The font size for the data rows (default is 8).
     - headersize: The font size for the header row (default is 9).
+    - metadata_path: Path to a JSON file containing metadata for columns (optional).
 
     Returns:
     - None (saves the PDF to the specified destination).
     """
+    import json
     # Validate font size parameters
     if not (isinstance(size, int) and isinstance(headersize, int)):
         raise Exception("Type Error: Font Size should be of int data type")
+
+    # Optionally load metadata
+    metadata = None
+    if metadata_path and os.path.exists(metadata_path):
+        with open(metadata_path) as f:
+            metadata = json.load(f)
 
     # Create a PDF object with the specified orientation and page size
     PDF = FPDF(orientation, format="letter")
@@ -215,6 +227,19 @@ def convert(
         data = [row for row in csv.reader(CSV, delimiter=delimiter)]
         header = data[0]  # Extract header row
         rows = data[1:]  # Extract data rows
+
+    # If metadata is provided, use it for column order and labels
+    if metadata:
+        col_keys = [col['key'] for col in metadata]
+        col_labels = [col['label'] for col in metadata]
+        # Reorder header and rows to match metadata
+        header_idx = [header.index(key) if key in header else None for key in col_keys]
+        header = col_labels
+        new_rows = []
+        for row in rows:
+            new_row = [row[idx] if idx is not None and idx < len(row) else "" for idx in header_idx]
+            new_rows.append(new_row)
+        rows = new_rows
 
     # Determine the maximum number of columns
     max_cols = len(header)
@@ -281,7 +306,7 @@ def convert(
     PDF.output(destination)
 
 
-def createPDFFirst(qval, qcid, params, weights, subfailed, containers):
+def createPDFFirst(qval, qcid, params, weights, subfailed, containers, opera_failed=False):
     """
     Create the first page of the PDF report.
 
@@ -292,6 +317,7 @@ def createPDFFirst(qval, qcid, params, weights, subfailed, containers):
     - weights: A list of weights for the query.
     - subfailed: A flag indicating if substructure searching failed.
     - containers: A list of container names for additional columns.
+    - opera_failed: A flag indicating if OPERA property predictions failed.
 
     Returns:
     - None (saves the PDF to "src/Comparison/LocalIO/first.pdf").
@@ -394,6 +420,21 @@ def createPDFFirst(qval, qcid, params, weights, subfailed, containers):
     pdf.drawString(85, pheight - 180, f"Weightages: {weights}")
     pdf.drawString(85, pheight - 200, f"Model Images: {containers}")
 
+    # Add Disallow Isotopes setting if present in params
+    disallow_isotopes = False
+    if len(params) > 6:
+        disallow_isotopes = params[6]
+    pdf.drawString(85, pheight - 220, f"Disallow isotopes as candidates: {'ON' if disallow_isotopes else 'OFF'}")
+
+    # Add OPERA failure warning if applicable
+    query_info_y_start = pheight - 240
+    if opera_failed:
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.setFillColorRGB(0.8, 0, 0)  # Red color for warning
+        pdf.drawString(85, pheight - 240, "WARNING: Property predictions failed - thermal/toxicity data may be inaccurate")
+        pdf.setFillColorRGB(0, 0, 0)  # Reset to black
+        query_info_y_start = pheight - 260  # Move query info down to accommodate warning
+
     # Fetch and draw the query compound information if available
     if qcid != -1:
         compound_info = fetchPubchemInfo([qcid])
@@ -407,27 +448,27 @@ def createPDFFirst(qval, qcid, params, weights, subfailed, containers):
             draw_string_with_dynamic_font(
                 pdf,
                 85,
-                pheight - 240,
+                query_info_y_start,
                 f"QUERY: {name}",
                 268,
                 False,
                 14,
                 "Helvetica-Bold",
             )
-            pdf.line(85, pheight - 245, 85 + 275, pheight - 245)
-            pdf.drawImage(image_url, 85, pheight - 540, width=275, height=275)
+            pdf.line(85, query_info_y_start - 5, 85 + 275, query_info_y_start - 5)
+            pdf.drawImage(image_url, 85, query_info_y_start - 300, width=275, height=275)
     else:
         draw_string_with_dynamic_font(
             pdf,
             85,
-            pheight - 240,
+            query_info_y_start,
             "Query not found in PubChem (No Visualization Below)",
             320,
             False,
             14,
             "Helvetica-Bold",
         )
-        pdf.line(85, pheight - 245, 430, pheight - 245)
+        pdf.line(85, query_info_y_start - 5, 430, query_info_y_start - 5)
 
     # Draw the 2D and 3D graphs on the PDF
     pdf.drawImage(
@@ -472,7 +513,7 @@ def createPDFCSV():
 
 
 def combinePDFs(
-    pubchem_cids, queryval, qcid, params, weights, include, subfailed, containers=None
+    pubchem_cids, queryval, qcid, params, weights, include, subfailed, containers=None, opera_failed=False
 ):
     """
     Combine multiple PDFs into a single PDF report.
@@ -486,6 +527,7 @@ def combinePDFs(
     - include: A flag indicating whether to include additional PDFs.
     - subfailed: A flag indicating if substructure searching failed.
     - containers: A list of container names for additional columns (default is None).
+    - opera_failed: A flag indicating if OPERA property predictions failed (default is False).
 
     Returns:
     - None (saves the merged PDF to "src/App/static/LocalIO/report.pdf").
@@ -493,7 +535,7 @@ def combinePDFs(
     # Create individual PDFs
     createPDFImages(pubchem_cids)
     createPDFCSV()
-    createPDFFirst(queryval, qcid, params, weights, subfailed, containers)
+    createPDFFirst(queryval, qcid, params, weights, subfailed, containers, opera_failed)
 
     # Initialize a PDF merger
     merger = PdfWriter()

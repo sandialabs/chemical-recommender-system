@@ -1,26 +1,42 @@
 # © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
 # SPDX-License-Identifier: BSD-3-Clause
 
-FROM ubuntu:20.04 AS base
-ENV DEBIAN_FRONTEND=noninteractive
-
-COPY DockerImport/OPERA2.9_CL_mcr.tar.gz OPERA.tar.gz
-RUN tar -xzf OPERA.tar.gz && rm OPERA.tar.gz
-RUN apt-get update && apt-get install -y sudo && apt-get install -y unzip 
-RUN apt-get install -y libxt6
-RUN sudo OPERA2_CL_mcr/OPERA2.9_mcr_Installer.install -mode silent -agreeToLicense yes
-ENV LD_LIBRARY_PATH=/usr/local/MATLAB/MATLAB_Runtime/v912/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/sys/os/glnxa64:MR/v912/sys/opengl/lib/glnxa64
-ENV XAPPLRESDIR=/usr/local/MATLAB/MATLAB_Runtime/v912/X11/app-defaults
-RUN /usr/OPERA/application/OPERA
-RUN echo "/usr/OPERA/application" > /root/.mcrCache9.12/OPERA_installdir.txt
-
-FROM python:3.9
-
-RUN apt-get update
-RUN apt-get install -y vim 
-RUN apt-get install -y nano
+FROM python:3.9-slim
 
 WORKDIR /app
+
+COPY src/Docker/requirements.txt requirements.txt
+RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host=files.pythonhosted.org --upgrade pip && \
+    pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host=files.pythonhosted.org --prefer-binary -r requirements.txt
+
+RUN	mkdir -p /usr/share/man/man1 && \
+	apt-get update && \
+	apt-get install -y \
+		openjdk-17-jre \
+		unzip \
+        nano \
+        vim
+
+COPY DockerImport/libOPERA2.9_Py.tar.gz libOPERA2.9_Py.tar.gz
+ENV OPERA_EXE_PATH=/usr/local/bin/OPERA/application/run_OPERA.sh
+ENV MATLAB_RUNTIME_PATH=/usr/local/MATLAB/MATLAB_Runtime/v912
+ENV LD_LIBRARY_PATH=.:/usr/local/MATLAB/MATLAB_Runtime/v912/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/sys/os/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/sys/opengl/lib/glnxa64
+ENV XAPPLRESDIR=/usr/local/MATLAB/MATLAB_Runtime/v912/X11/app-defaults
+
+RUN	tar xzf libOPERA2.9_Py.tar.gz
+RUN	rm libOPERA2.9_Py.tar.gz
+RUN cd libOPERA2_Py/ && \
+	./OPERA2.9_Py_mcr.install -mode silent -agreeToLicense yes
+    
+# Temporarily downgrade setuptools to allow OPERA's invalid version string
+RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host=files.pythonhosted.org "setuptools<60.0.0"
+RUN cd /usr/local/bin/OPERA/application/ && \
+	python setup.py install
+
+RUN rm /usr/local/MATLAB/MATLAB_Runtime/v912/java/jarext/log4j.*
+
+ENV FLASK_APP=App/App.py
+EXPOSE 5005
 
 COPY DockerImport/volumes/etcd /etcd_data
 COPY DockerImport/volumes/milvus /milvus_data
@@ -29,43 +45,37 @@ COPY DockerImport/volumes/minio /minio_data
 # Define the volume mount points
 VOLUME ["/etcd_data", "/milvus_data", "/minio_data"]
 
-
-RUN mkdir javadir
-ARG TARGETARCH
-RUN if [ "$TARGETARCH" = "amd64" ]; then \
-        curl -k https://download.oracle.com/java/20/archive/jdk-20.0.2_linux-x64_bin.tar.gz | tar -xvz -C javadir; \
-    elif [ "$TARGETARCH" = "arm64" ]; then \
-        curl -k https://download.oracle.com/java/20/archive/jdk-20.0.2_linux-aarch64_bin.tar.gz | tar -xvz -C javadir; \
-    else \
-        echo "Unsupported architecture: $TARGETARCH"; exit 1; \
-    fi
-
-ENV JAVA_HOME=/app/javadir/jdk-20.0.2
-ENV PATH=${PATH}:/app/javadir/jdk-20.0.2/bin
-ENV FLASK_APP=App/App.py
-ENV LD_LIBRARY_PATH=/usr/local/MATLAB/MATLAB_Runtime/v912/runtime/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/bin/glnxa64:/usr/local/MATLAB/MATLAB_Runtime/v912/sys/os/glnxa64:MR/v912/sys/opengl/lib/glnxa64
-ENV XAPPLRESDIR=/usr/local/MATLAB/MATLAB_Runtime/v912/X11/app-defaults
-EXPOSE 5005
-
-COPY --from=base OPERA2_CL_mcr OPERA2_CL_mcr
-COPY --from=base /root/.mcrCache9.12 /root/.mcrCache9.12
-COPY --from=base /usr/OPERA /usr/OPERA
-COPY --from=base /usr/local/MATLAB/MATLAB_Runtime/v912 /usr/local/MATLAB/MATLAB_Runtime/v912
-
-COPY src/Docker/requirements.txt requirements.txt
-RUN pip --trusted-host pypi.org --trusted-host files.pythonhosted.org install -r requirements.txt
-
+# Copy application files
 COPY src/Comparison src/Comparison
 COPY src/App src/App
 COPY src/main.py src/main.py
-COPY test.txt test.txt 
-# temp TEST ABOVE ^^ NEED TO REMOVE
+COPY src/utils src/utils
+COPY src/OPERA /app/OPERA
+COPY src/Docker/startup.sh /app/startup.sh
 
-RUN rm -r src/Comparison/LocalIO/*
-RUN rm -r src/App/static/LocalIO/*
-RUN mkdir output
-RUN mkdir logs
+# Clean up any existing files and create all required directories
+RUN rm -rf src/Comparison/LocalIO/* || true
+RUN rm -rf src/App/static/LocalIO/* || true
+RUN mkdir -p output logs \
+    && mkdir -p src/Comparison/LocalIO \
+    && mkdir -p src/App/static/LocalIO \
+    && mkdir -p src/App/static/single_jobs \
+    && mkdir -p src/Comparison/LocalIO/single_jobs \
+    && touch src/Comparison/LocalIO/data.csv \
+    && touch src/App/static/LocalIO/graph.png \
+    && touch src/App/static/LocalIO/Property-Predictions.csv \
+    && touch src/App/static/LocalIO/results.csv \
+    && chmod -R 777 src/Comparison/LocalIO \
+    && chmod -R 777 src/App/static/LocalIO \
+    && chmod -R 777 output \
+    && chmod -R 777 logs \
+    && chmod +x /app/startup.sh
 
-LABEL org.opencontainers.image.source https://github.com/sandialabs/chemical-recommender-system
+# Create a placeholder no-graph image
+RUN echo '<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="#666">No graph data available</text></svg>' > src/App/static/assets/no-graph.svg \
+    && echo '<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="#666">No graph data available</text></svg>' > src/App/static/LocalIO/graph.png
 
-CMD ["/bin/sh", "-c", "python /app/src/main.py -w && tail -f /dev/null"]
+LABEL org.opencontainers.image.source="https://github.com/sandialabs/chemical-recommender-system"
+
+# Use the startup script instead of direct command
+CMD ["/app/startup.sh"]

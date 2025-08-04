@@ -7,72 +7,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chemical Recommender System</title>
-    <link rel="stylesheet" type="text/css" href="../static/index.css" />
+    <link rel="stylesheet" type="text/css" href="../static/style.css" />
     <link rel="icon" href="../static/assets/CRS.png" type="image/icon type" />
-    {% block head %} {% endblock %}
+    {% block head %}{% endblock %}
   </head>
-
-  <body>
-    <nav class="navbar">
-      <!-- LOGO -->
-      <div class="navbar-logo">
-        <img
-          src="../static/assets/SNL.png"
-          alt="logo"
-          style="height: 60px; padding-left: 20px"
-        />
+  <body{% if request.endpoint == 'main.index' %} class="home-page"{% endif %}>
+    <nav class="navbar" role="navigation" aria-label="main navigation">
+      <div class="navbar-left">
+        <img src="../static/assets/SNL.png" alt="Sandia logo" class="navbar-img snl-logo" />
+        <img src="../static/assets/CRSwhite.png" alt="CRS logo" class="navbar-img crs-logo" />
       </div>
-      <div
-        class="navbar-logo"
-        style="left: 220px; transform: translateY(-17px)"
-      >
-        <img
-          src="../static/assets/CRSwhite.png"
-          alt="logo"
-          style="height: 90px"
-        />
-      </div>
-      <div class="logo">
-        <h1
-          id="headerTitle"
-          style="
-            color: white;
-            position: fixed;
-            left: 50vw;
-            transform: translateX(-50%) translateY(-50%);
-            top: 50px;
-          "
-        >
-          Chemical Recommender System
-        </h1>
-      </div>
-
-      <!-- NAVIGATION MENU -->
-      <ul
-        class="nav-links"
-        style="
-          list-style-type: none;
-          text-decoration: none;
-          position: fixed;
-          right: 4.5vw;
-        "
-      >
-        <!-- NAVIGATION MENUS -->
-        <div class="menu">
-          <li><a href="/">Home</a></li>
-          <li><a href="/search">Search</a></li>
-          <li><a href="/batch">Batch Job</a></li>
-          <li><a href="/contact">Contact</a></li>
-        </div>
+      <h1 id="headerTitle" class="navbar-title">Chemical Recommender System</h1>
+      <ul class="nav-links menu">
+        <li><a href="/">Home</a></li>
+        <li><a href="/search">Search</a></li>
+        <li><a href="/batch">Batch Job</a></li>
+        <li><a href="/contact">Contact</a></li>
       </ul>
     </nav>
-  </body>
-  {% block outside %} {% endblock %}
-  <body>
-    <br /><br /><br /><br /><br /><br /><br />
-    {% block content %} {% endblock %}
-    <div class="error-alert" id="errorAlert"></div>
-
+    {% block outside %}
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    {% endblock %}
+    <div class="error-alert" id="errorAlert" role="alert"></div>
     <script>
       function showErrorAlert(message) {
         var errorAlert = document.getElementById("errorAlert");
@@ -88,21 +46,18 @@
           { once: true }
         );
       }
-
       var errorm = "{{errorm|e}}";
       if (errorm) {
         showErrorAlert(errorm);
       }
-
       function checkWindowSize() {
         var headerTitle = document.getElementById("headerTitle");
-        if (window.innerWidth > 1380) {
+        if (window.innerWidth > 900) {
           headerTitle.classList.remove("hidden");
         } else {
           headerTitle.classList.add("hidden");
         }
       }
-
       window.addEventListener("resize", checkWindowSize);
       window.addEventListener("load", checkWindowSize);
     </script>

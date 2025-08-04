@@ -4,13 +4,33 @@
 import argparse, sys
 from argparse import RawDescriptionHelpFormatter
 from datetime import datetime
+from pathlib import Path
 
+from Comparison.utility import ensure_directories_exist
+from utils.logging_config import setup_logging, get_logger
 
 sys.path.append("Comparison")
 sys.path.append("App")
 
 from Comparison.Controller import BatchRun as br
 from App.App import runFlask as rf
+
+logger = get_logger(__name__)
+
+
+def setup_environment():
+    """
+    Set up the environment for the application to run properly.
+
+    """
+    # Add the src directory to the Python path
+    src_dir = Path(__file__).parent
+    if str(src_dir) not in sys.path:
+        sys.path.append(str(src_dir))
+
+    from Comparison.utility import ensure_directories_exist
+    ensure_directories_exist()
+
 
 
 class CRS:
@@ -25,7 +45,7 @@ Input File Format:
 
 Input search parameters for the run must be written into a separate file. You can use text editors like nano or vim. The format of the input should be as follows:
 
-    query, final_number, thermo_array, include_all_elements, include_specific_elements, substructure_search, number_substructure_search
+    query, final_number, thermo_array, include_all_elements, include_specific_elements, disallow_isotopes, substructure_search, number_substructure_search, weights
 
 Parameter Descriptions:
 
@@ -39,8 +59,9 @@ Parameter Descriptions:
   - Henry's Law Constant
 - include_all_elements: CRS by default only searches these elements: H, C, N, O, F, P, S, Cl, Se, Br, I. Setting this parameter to True will include all elements instead. (Must be True or False)
 - include_specific_elements: Add specific elements to search in addition to the default ones. Should be in a comma-separated format with no spaces in between. Must be either this or None.
+- disallow_isotopes: 0 (allow isotopes) or 1 (disallow isotopes as candidates)
 - substructure_search: Provide a SMARTS representation of a substructure to require in all candidates. If not using, must leave as None.
-- number_substructure_search: Signifies how many occurrences of the substructure must appear in the candidate. If not a number, leave as None. If a substructure is given and this is left as None, the search will look for at least 1 or more occurrences.
+- number_substructure_search: Signifies how many occurrences of the substructure must appear in the candidate. If not using substructures number, leave as None. If a substructure is given and this is left as None, the search will look for at least 1 or more occurrences.
 - weights (optional): An array of weights signifying how to weigh each comparison value in the total rankings. This is [1,1,1,1,1] by default. These correspond to:
   - Structural Similarity
   - Molecular Weight Similarity
@@ -50,13 +71,13 @@ Parameter Descriptions:
 
 Example Inputs:
 
-    6517, 30, [True,True,False,False,False], False, [Si], CCO, 1
+    6517, 30, [True,True,False,False,False], False, [Si], 1, CCO, 1
 
-This example tells the CRS to search for recommendations for PubChem CID 6517. It would create a report with 30 candidates and use the thermophysical properties of Melting Point and Boiling Point in comparison. The elements allowed in candidates are the listed default plus Silicon. Finally, all returned candidates will have at least one occurrence of the SMARTS 'CCO'.
+This example tells the CRS to search for recommendations for PubChem CID 6517. It would create a report with 30 candidates and use the thermophysical properties of Melting Point and Boiling Point in comparison. The elements allowed in candidates are the listed default plus Silicon. Isotopes are disallowed. Finally, all returned candidates will have at least one occurrence of the SMARTS 'CCO'.
 
-    quinolin-8-ol, 30, [False,False,False,False,True], True, None, None, None, [2,1,1,1,0]
+    quinolin-8-ol, 30, [False,False,False,False,True], True, None, 0, None, None, [2,1,1,1,0]
 
-This example tells the CRS to search for recommendations for the IUPAC Name quinolin-8-ol. It would create a report with 10 candidates and use the thermophysical property of the Henry's Law Constant. Candidates will be allowed to have any elements in it. The final sorting will disregard SA Scoring in the calculation and give increased weightage to structural similarity.
+This example tells the CRS to search for recommendations for the IUPAC Name quinolin-8-ol. It would create a report with 10 candidates and use the thermophysical property of the Henry's Law Constant. Candidates will be allowed to have any elements in it. Isotopes are allowed. The final sorting will disregard SA Scoring in the calculation and give increased weightage to structural similarity.
 """,
             formatter_class=RawDescriptionHelpFormatter,
         )
@@ -136,12 +157,26 @@ This example tells the CRS to search for recommendations for the IUPAC Name quin
 
             # Process the containers if any
             containers = args.containers
-            print(f"Using models: {containers}")  # Example usage, adjust as needed
+            logger.info(f"Using models: {containers}")
 
-            br(batch_input, output_filename, True, containers=containers)
+            # Generate a job ID for command line usage
+            import uuid
+            job_id = f"cli_{uuid.uuid4()}"
+            br(batch_input, output_filename, True, containers=containers, job_id=job_id)
 
 
-if __name__ == "__main__":
+def main():
+    # Set up centralized logging first
+    setup_logging(reset=True)
+    
+    # Ensure all required directories exist
+    ensure_directories_exist()
+    
     crs = CRS()
     args = crs.parseArgs()
     crs.processData(args)
+
+
+if __name__ == "__main__":
+    setup_environment()
+    main()

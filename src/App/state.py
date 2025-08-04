@@ -1,7 +1,6 @@
 # © 2024 National Technology & Engineering Solutions of Sandia, LLC (NTESS).  Under the terms of Contract DE-NA0003525 with NTESS, the U.S. Government retains certain rights in this software.
 # SPDX-License-Identifier: BSD-3-Clause
 
-
 class AppState:
     """
     A class to maintain the state of the application.
@@ -33,8 +32,8 @@ class AppState:
     - result_queue: A queue to store the results from the search process.
     """
 
-    def __init__(self, manager):
-        self.captured_output = None
+    def __init__(self):
+        from collections import OrderedDict
         self.cidarr = []
         self.queryval = ""
         self.tarray = []
@@ -44,11 +43,16 @@ class AppState:
         self.params = None
         self.subfailed = None
         self.weights = [1, 1, 1, 1, 1]
-        self.batch_status = manager.Value("c", "false")
+        self.batch_status = "false"
         self.batch_process = None
-        self.search_status = manager.Value("c", "false")
+        self.batch_job_id = None
+        self.search_status = "false"
         self.search_process = None
         self.result_queue = None
+        
+        # Centralized caches for OPERA and Milvus
+        self.opera_prop_cache = OrderedDict()
+        self.milvus_fp_cache = OrderedDict()
 
     def reset_vals(self):
         self.cidarr = []
@@ -62,8 +66,9 @@ class AppState:
         self.weights = [1, 1, 1, 1, 1]
         self.batch_process = None
         self.search_process = None
-        self.search_status.value = "false"
-        self.batch_status.value = "false"
+        self.search_status = "false"
+        self.batch_status = "false"
+        self.batch_job_id = None
         self.result_queue = None
 
         with open("logs/comparison-root.log", "w") as file:
