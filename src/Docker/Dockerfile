@@ -52,6 +52,7 @@ COPY src/main.py src/main.py
 COPY src/utils src/utils
 COPY src/OPERA /app/OPERA
 COPY src/Docker/startup.sh /app/startup.sh
+COPY tests tests
 
 # Clean up any existing files and create all required directories
 RUN rm -rf src/Comparison/LocalIO/* || true
@@ -69,7 +70,8 @@ RUN mkdir -p output logs \
     && chmod -R 777 src/App/static/LocalIO \
     && chmod -R 777 output \
     && chmod -R 777 logs \
-    && chmod +x /app/startup.sh
+    && chmod +x /app/startup.sh \
+    && chmod +x tests/run_tests.sh
 
 # Create a placeholder no-graph image
 RUN echo '<svg width="800" height="400" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#f0f0f0"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" fill="#666">No graph data available</text></svg>' > src/App/static/assets/no-graph.svg \
