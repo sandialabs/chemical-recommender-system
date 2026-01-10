@@ -16,32 +16,30 @@ The Chemical Recommender System (CRS) is a tool designed to assist researchers i
 
 ## Table of Contents
 
-- [Chemical Recommender System (CRS)](#chemical-recommender-system-crs)
-  - [Instructions to Run](#instructions-to-run)
-  - [Command Line Interface (CLI)](#command-line-interface-cli)
-  - [Table of Contents](#table-of-contents)
-  - [Command Line / Developer Integrations](#command-line--developer-integrations)
-    - [Input File Format](#input-file-format)
+- [Instructions to Run](#instructions-to-run)
   - [Environment Variables:](#environment-variables)
+- [Command Line Interface (CLI)](#command-line-interface-cli)
+- [Command Line / Developer Integrations](#command-line--developer-integrations)
+  - [Input File Format](#input-file-format)
     - [Parameter Descriptions:](#parameter-descriptions)
     - [Example Inputs:](#example-inputs)
-    - [Running the CRS](#running-the-crs)
-      - [Example Commands:](#example-commands)
-  - [Preprocessing](#preprocessing)
-    - [PubChem](#pubchem)
-  - [Running Fingerprint Similarity](#running-fingerprint-similarity)
-  - [Further Sorting](#further-sorting)
-    - [Thermophysical Comparison](#thermophysical-comparison)
-    - [Toxicity Evaluation](#toxicity-evaluation)
-    - [Structural Similarity](#structural-similarity)
-    - [Synthetic Accessibility Scoring](#synthetic-accessibility-scoring)
-  - [Technical Details](#technical-details)
-    - [Vector Database Solution](#vector-database-solution)
-    - [OPERA Integration](#opera-integration)
-    - [RDKit SA Scoring](#rdkit-sa-scoring)
-  - [Integrating Your Own Models](#integrating-your-own-models)
-    - [Steps to Integrate Your Model](#steps-to-integrate-your-model)
-  - [Contributing](#contributing)
+  - [Running the CRS](#running-the-crs)
+    - [Example Commands:](#example-commands)
+- [Preprocessing](#preprocessing)
+  - [PubChem](#pubchem)
+- [Running Fingerprint Similarity](#running-fingerprint-similarity)
+- [Further Sorting](#further-sorting)
+  - [Thermophysical Comparison](#thermophysical-comparison)
+  - [Toxicity Evaluation](#toxicity-evaluation)
+  - [Structural Similarity](#structural-similarity)
+  - [Synthetic Accessibility Scoring](#synthetic-accessibility-scoring)
+- [Technical Details](#technical-details)
+  - [Vector Database Solution](#vector-database-solution)
+  - [OPERA Integration](#opera-integration)
+  - [RDKit SA Scoring](#rdkit-sa-scoring)
+- [Integrating Your Own Models](#integrating-your-own-models)
+  - [Steps to Integrate Your Model](#steps-to-integrate-your-model)
+- [Contributing](#contributing)
 
 ## Instructions to Run
 
@@ -50,6 +48,17 @@ To run the Chemical Recommender System, first ensure that your machine has docke
 `docker compose up -d`
 
 This will automatically open the web version of the application in your browser at `localhost:5005`. You will open up on the home page and the functionality of the CRS is found at the search and batch pages. When you are done using the CRS, you can shut down all containers and networks with the command `docker compose down`. If you are running into issues, make sure installation has occured correctly by deleting all volumes once the images are pulled and rerunning the compose up command.
+
+### Environment Variables:
+
+Create a .env file in the directory of your `docker-compose.yml`. If you have the need for proxies, these are specified here. Also, if the default CRS port, 5005, is in use, you can change this to whatever may be open on your machine. Finally, ensure you use the correct architecture for your image pull. The options for TARGETARCH are amd64 and arm64. If you are using a Windows machine backed by WSL, you are likely using amd64. A Silicon M-Series Macboook will use arm64. If you add no env file, the default will run with no proxies on port 5005, assuming an amd64 machine. Update the settings in the file as so:
+
+```sh
+HTTP_PROXY=http://your-proxy-server:port
+HTTPS_PROXY=https://your-proxy-server:port
+CRS_PORT=xxxx
+TARGETARCH=xxx64
+```
 
 ## Command Line Interface (CLI)
 
@@ -73,17 +82,6 @@ Input search parameters for the run must be written into a separate file. You ca
 
 ```sh
 query, final_number, thermo_array, include_all_elements, include_specific_elements, disallow_isotopes,substructure_search, number_substructure_search, weights
-```
-
-## Environment Variables:
-
-Create a .env file in the directory of your `docker-compose.yml`. If you have the need for proxies, these are specified here. Also, if the default CRS port, 5005, is in use, you can change this to whatever may be open on your machine. Finally, ensure you use the correct architecture for your image pull. The options for TARGETARCH are amd64 and arm64. If you are using a Windows machine backed by WSL, you are likely using amd64. A Silicon M-Series Macboook will use arm64. If you add no env file, the default will run with no proxies on port 5005, assuming an amd64 machine. Update the settings in the file as so:
-
-```sh
-HTTP_PROXY=http://your-proxy-server:port
-HTTPS_PROXY=https://your-proxy-server:port
-CRS_PORT=xxxx
-TARGETARCH=xxx64
 ```
 
 #### Parameter Descriptions:
