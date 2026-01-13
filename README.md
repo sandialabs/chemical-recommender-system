@@ -43,22 +43,35 @@ The Chemical Recommender System (CRS) is a tool designed to assist researchers i
 
 ## Instructions to Run
 
-To run the Chemical Recommender System, first ensure that your machine has docker installed and configured (https://docs.docker.com/engine/install/). To run the CRS on ARM64 machines, including M-series Macbooks, enable Docker  Emulation support using Rosetta. Next, ensure the docker engine is running and download the `docker-compose.yml` file from this reposotory. Enter the directory in which this file is stored. Here, create a .env file and create your settings as described below in the documentation. This is a necessary step to ensure all functionality. Finally, and then use the following command:
-
-`docker compose up -d`
-
-This will automatically open the web version of the application in your browser at `localhost:5005`. You will open up on the home page and the functionality of the CRS is found at the search and batch pages. When you are done using the CRS, you can shut down all containers and networks with the command `docker compose down`. If you are running into issues, make sure installation has occured correctly by deleting all volumes once the images are pulled and rerunning the compose up command.
+1. Ensure that your machine has docker installed and configured (https://docs.docker.com/engine/install/). To run the CRS on ARM64 machines, including M-series Macbooks, enable Docker Emulation support using Rosetta.
+2. Ensure the docker engine is running and download the `docker-compose.yml` file from this repository.
+3. Enter the directory in which the downloaded file is stored.
+4. Create a `.env` file and create your settings as described below in the documentation. This is a necessary step to ensure all functionality.
+5. Start the CRS:
+  ```sh
+  docker compose up -d
+  ```
+6. This will automatically open the web version of the application in your browser at `localhost:5005`. You will open up on the home page and the functionality of the CRS is found at the search and batch pages.
+7. When you are done using the CRS, shut down all containers and networks:
+  ```sh
+  docker compose down
+  ```
+8. If you are running into issues, make sure installation has occurred correctly by deleting all volumes once the images are pulled and rerunning the compose up command.
 
 ### Environment Variables:
 
-Create a .env file in the directory of your `docker-compose.yml`. If you have the need for proxies, these are specified here. Also, if the default CRS port, 5005, is in use, you can change this to whatever may be open on your machine. Finally, ensure you use the correct architecture for your image pull. The options for TARGETARCH are amd64 and arm64. If you are using a Windows machine backed by WSL, you are likely using amd64. A Silicon M-Series Macboook will use arm64. If you add no env file, the default will run with no proxies on port 5005, assuming an amd64 machine. Update the settings in the file as so:
-
-```sh
-HTTP_PROXY=http://your-proxy-server:port
-HTTPS_PROXY=https://your-proxy-server:port
-CRS_PORT=xxxx
-TARGETARCH=xxx64
-```
+- Create a `.env` file in the directory of your `docker-compose.yml`.
+- If you have the need for proxies, these are specified here.
+- If the default CRS port, 5005, is in use, you can change this to whatever may be open on your machine.
+- Finally, ensure you use the correct architecture for your image pull. The options for `TARGETARCH` are `amd64` and `arm64`. If you are using a Windows machine backed by WSL, you are likely using `amd64`. A Silicon M-Series Macbook will use `arm64`.
+- If you add no env file, the default will run with no proxies on port 5005, assuming an `amd64` machine.
+- Update the settings in the file as so:
+  ```sh
+  HTTP_PROXY=http://your-proxy-server:port
+  HTTPS_PROXY=https://your-proxy-server:port
+  CRS_PORT=xxxx
+  TARGETARCH=xxx64
+  ```
 
 ## Command Line Interface (CLI)
 
