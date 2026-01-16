@@ -25,6 +25,7 @@ The Chemical Recommender System (CRS) is a tool designed to assist researchers i
     - [Example Inputs:](#example-inputs)
   - [Running the CRS](#running-the-crs)
     - [Example Commands:](#example-commands)
+- [Tests](#tests)
 - [Preprocessing](#preprocessing)
   - [PubChem](#pubchem)
 - [Running Fingerprint Similarity](#running-fingerprint-similarity)
@@ -152,6 +153,24 @@ Tell the CRS to use this file as input by using the `-i` or `--input` argument f
    You can then add your own model and comparison metrics through the command line with the -m or --model option followed by a list of model names. For further explanation on this topic, refer to [Steps to Integrate Your Model](#steps-to-integrate-your-model).
 
 In the case that the webapp of the CRS goes down, it can be restarted with the -w or --webapp option in the following format: `python src/main.py -w`.
+
+## Tests
+
+Comprehensive unit and integration tests are available in the `tests/` directory. To run the tests, first enter the container shell as described in the [CLI section](#command-line-interface-cli), then execute:
+
+```bash
+cd /app
+./tests/run_tests.sh
+```
+
+Or run individual test files:
+```bash
+python -m unittest tests.test_unit_query -v
+python -m unittest tests.test_unit_scoring -v
+python -m unittest tests.test_golden_master -v
+```
+
+See `tests/README.md` for detailed information on test types and what they verify.
 
 ## Preprocessing
 
