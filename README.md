@@ -43,6 +43,8 @@ The Chemical Recommender System (CRS) is a tool designed to assist researchers i
 
 ## Instructions to Run
 
+> **Note:** The Docker image is approximately 15 GB as it comes pre-built with machine learning models and a vector database of PubChem molecular data.
+
 1. Ensure that your machine has docker installed and configured (https://docs.docker.com/engine/install/). To run the CRS on ARM64 machines, including M-series Macbooks, enable Docker Emulation support using Rosetta.
 2. Ensure the docker engine is running and download the `docker-compose.yml` file from this repository.
 3. Enter the directory in which the downloaded file is stored.
