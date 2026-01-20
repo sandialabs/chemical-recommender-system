@@ -26,6 +26,11 @@ cd /path/to/chemical-recommender-system
 ./tests/run_tests.sh
 ```
 
+#### Run without Docker (local Python, no Golden Test)
+- Clone the repo and enter it: `git clone https://github.com/sandialabs/chemical-recommender-system.git CRS && cd CRS`
+- Create a venv and install minimal deps: `python3 -m venv .venv && source .venv/bin/activate && pip install pytest pandas pubchempy rdkit`
+- Run focused tests (no Milvus/OPERA needed): `pytest tests/test_unit_query.py` and `pytest tests/test_unit_scoring.py`
+
 #### Individual Test Files
 ```bash
 # Run specific test files
