@@ -76,6 +76,11 @@ The Chemical Recommender System (CRS) is a tool designed to assist researchers i
   TARGETARCH=xxx64
   ```
 
+> **Proxy troubleshooting note:** If PubChem requests fail (for example, CONNECT returns `404` when using `pubchempy`), the proxy may be blocking PubChem traffic. We replicated this by adding a proxy in the container env settings and observed the same failures in tests and runs. Fix options are: (1) disable the blocking proxy, or (2) bypass the proxy for PubChem-related hosts. For example, under `crs-service` environment in `docker-compose.yml` add:
+> ```sh
+> - NO_PROXY=${NO_PROXY:-.ncbi.nlm.nih.gov}
+> ```
+
 ## Command Line Interface (CLI)
 
 The easiest way to use the CRS is described above through the intuitive webapp. However, using the CLI, developers can integrate their own machine learning models or comparison metrics they have created. To do this, enter the container shell and use the CLI. Continue from the previous steps and then:
