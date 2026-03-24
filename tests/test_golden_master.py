@@ -1,9 +1,7 @@
 # Golden master tests - compare against known good outputs
 import unittest
-import json
 import os
 import sys
-from unittest.mock import patch, Mock
 import pandas as pd
 
 # Add src to path
@@ -15,57 +13,9 @@ class TestGoldenMaster(unittest.TestCase):
     """
     Golden Master tests - compare outputs against known good results.
     
-    These tests use pre-recorded 'golden' outputs to ensure the system
-    produces consistent results. When you make changes that intentionally
-    change outputs, you'll need to update the golden files.
+    This test validates generated batch output against the committed
+    tests/golden.csv baseline.
     """
-    
-    def setUp(self):
-        """Set up paths for golden master files"""
-        self.test_data_dir = os.path.join(os.path.dirname(__file__), 'golden_data')
-        os.makedirs(self.test_data_dir, exist_ok=True)
-    
-    def save_golden_master(self, test_name, data):
-        """Save golden master data to file"""
-        filepath = os.path.join(self.test_data_dir, f"{test_name}.json")
-        with open(filepath, 'w') as f:
-            json.dump(data, f, indent=2, default=str)
-    
-    def load_golden_master(self, test_name):
-        """Load golden master data from file"""
-        filepath = os.path.join(self.test_data_dir, f"{test_name}.json")
-        if not os.path.exists(filepath):
-            return None
-        with open(filepath, 'r') as f:
-            return json.load(f)
-    
-    def assert_golden_master(self, test_name, actual_data, tolerance=1e-6):
-        """Compare actual data against golden master"""
-        expected_data = self.load_golden_master(test_name)
-        
-        if expected_data is None:
-            # First time running - save as golden master
-            self.save_golden_master(test_name, actual_data)
-            print(f"Saved new golden master: {test_name}")
-            return
-        
-        # Compare the data structures
-        self.compare_data_structures(expected_data, actual_data, tolerance)
-    
-    def compare_data_structures(self, expected, actual, tolerance):
-        """Recursively compare data structures with tolerance for floats"""
-        if isinstance(expected, dict) and isinstance(actual, dict):
-            self.assertEqual(set(expected.keys()), set(actual.keys()))
-            for key in expected.keys():
-                self.compare_data_structures(expected[key], actual[key], tolerance)
-        elif isinstance(expected, list) and isinstance(actual, list):
-            self.assertEqual(len(expected), len(actual))
-            for exp_item, act_item in zip(expected, actual):
-                self.compare_data_structures(exp_item, act_item, tolerance)
-        elif isinstance(expected, float) and isinstance(actual, float):
-            self.assertAlmostEqual(expected, actual, delta=tolerance)
-        else:
-            self.assertEqual(expected, actual)
 
     def test_exact_cid_6517_batch_reproduction(self):
         """
@@ -154,40 +104,6 @@ class TestGoldenMaster(unittest.TestCase):
             self.assertAlmostEqual(float(top_result['Fingerprint']), float(golden_top['Fingerprint']), places=4,
                                  msg="Top result fingerprint score should match golden data")
             
-            # Store comprehensive summary for regression testing
-            test_summary = {
-                'query_cid': 6517,
-                'batch_parameters': {
-                    'finnum': 30,
-                    'tarray': [True, True, False, False, False],
-                    'incEle': False,
-                    'include_specific_elements': ['Si'],
-                    'disallow_isotopes': 1,
-                    'substructure': 'CCO',
-                    'substructure_count': 1
-                },
-                'num_results': len(actual_ranked_results),
-                'all_result_cids': list(actual_ranked_results['CID'].astype(int)),
-                'all_overall_scores': [float(x) if not pd.isna(x) else None 
-                                     for x in actual_ranked_results['Overall']],
-                'top_10_details': [
-                    {
-                        'cid': int(row.CID),
-                        'overall': float(row.Overall) if not pd.isna(row.Overall) else None,
-                        'fingerprint': float(row.Fingerprint) if hasattr(row, 'Fingerprint') and not pd.isna(row.Fingerprint) else None,
-                        'molecular': float(row.Molecular) if hasattr(row, 'Molecular') and not pd.isna(row.Molecular) else None,
-                        'thermal': float(row.Thermophysical) if hasattr(row, 'Thermophysical') and not pd.isna(row.Thermophysical) else None,
-                        'toxicity': float(row.Toxicity) if hasattr(row, 'Toxicity') and not pd.isna(row.Toxicity) else None,
-                        'synthetic': float(row.Synthetic) if hasattr(row, 'Synthetic') and not pd.isna(row.Synthetic) else None
-                    }
-                    for row in actual_ranked_results.head(10).itertuples()
-                ],
-                'validation_status': 'exact_match_with_golden_csv',
-                'test_timestamp': str(pd.Timestamp.now())
-            }
-            
-            self.assert_golden_master("exact_cid_6517_batch_reproduction", test_summary, tolerance=1e-5)
-                
         except Exception as e:
             if "Milvus" in str(e) or "connection" in str(e).lower():
                 self.skipTest(f"Milvus not available: {e}")
@@ -196,14 +112,12 @@ class TestGoldenMaster(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # Instructions for updating golden masters
+    # Instructions for running CSV regression check
     print("\n" + "="*60)
     print("GOLDEN MASTER TESTS")
     print("="*60)
-    print("These tests compare outputs against saved 'golden' results.")
-    print("If this is your first time running, golden masters will be created.")
-    print("If you've made intentional changes, delete the golden_data/ folder")
-    print("to regenerate golden masters.")
+    print("This test compares generated output against tests/golden.csv.")
+    print("The golden CSV baseline is read-only during test runs.")
     print("="*60 + "\n")
     
     unittest.main()
