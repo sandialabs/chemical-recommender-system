@@ -13,6 +13,7 @@
 
 The Chemical Recommender System (CRS) is a tool designed to assist researchers in identifying and comparing chemical compounds based on various criteria such as structural similarity, thermophysical properties, and toxicity. Utilizing state-of-the-art machine learning models and vector databases, the CRS streamlines the process of chemical discovery and evaluation, making it an invaluable resource for scientific research and development. The CRS is elastic to user needs, transparent in its methods, and robust in allowing users to incorporate their own models and comparison metrics within CRS runs. Explore the documentation below to use the CRS.
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.09339/status.svg)](https://doi.org/10.21105/joss.09339)
 
 ## Table of Contents
 
